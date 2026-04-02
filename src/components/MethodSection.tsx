@@ -91,8 +91,18 @@ export function MethodSection({ isActive }: MethodSectionProps) {
             backgroundColor: "var(--indaco)",
             transform: `translateY(-50%) scaleX(${lineVisible ? 1 : 0})`,
             transformOrigin: "left",
-            transition:
-              "transform 1.8s cubic-bezier(0.22, 1, 0.36, 1)",
+            transition: "transform 1.8s cubic-bezier(0.22, 1, 0.36, 1)",
+          }}
+        />
+
+        {/* Vertical Line (mobile) */}
+        <div
+          className="md:hidden absolute top-[20px] bottom-[20px] left-1/2 w-[8px] rounded-full -translate-x-1/2"
+          style={{
+            backgroundColor: "var(--indaco)",
+            transform: `scaleY(${lineVisible ? 1 : 0})`,
+            transformOrigin: "top",
+            transition: "transform 1.8s cubic-bezier(0.22, 1, 0.36, 1)",
           }}
         />
 

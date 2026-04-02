@@ -49,17 +49,18 @@ export function HeroSlide({
     <div className="relative w-full h-full flex items-center justify-center">
       {/* 3D Creature — Left */}
       <div
-        className="absolute left-[4%] md:left-[8%] top-1/2 z-10"
+        className="absolute left-[-5%] md:left-[8%] top-[10%] md:top-1/2 z-10 w-[200px] md:w-[420px]"
         style={{
           transform: creatureVisible
             ? "translateY(-55%) scale(1) rotate(0deg)"
             : "translateY(-55%) scale(0.3) rotate(-20deg)",
-          opacity: creatureVisible ? 1 : 0,
+          opacity: creatureVisible ? 0.6 : 0,
           transition:
             "transform 1.2s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.8s ease",
         }}
       >
         <div
+          className="md:opacity-100 opacity-60"
           style={{
             animation: isActive ? "float 6s ease-in-out infinite" : "none",
           }}
@@ -69,7 +70,7 @@ export function HeroSlide({
             alt={creatureAlt}
             width={420}
             height={420}
-            className="drop-shadow-2xl"
+            className="drop-shadow-2xl w-full h-auto"
             priority
           />
         </div>

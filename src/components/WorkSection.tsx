@@ -110,10 +110,10 @@ export function WorkSection({ isActive }: WorkSectionProps) {
               href={item.href}
               className="relative block flex-shrink-0 overflow-hidden group"
               style={{
-                width: "clamp(140px, 16vw, 240px)",
+                width: "clamp(120px, 20vw, 240px)",
                 aspectRatio: "16/9",
                 borderRadius: "20px",
-                marginLeft: index === 0 ? 0 : "-2%",
+                marginLeft: index === 0 ? 0 : "clamp(-40px, -8vw, -2%)",
                 transform: cardsVisible
                   ? `rotate(${isHovered ? 0 : baseRotation}deg) scale(${isHovered ? 1.15 : 0.75}) translateY(${isHovered ? "-8%" : "0"})`
                   : "translateY(120vh) rotate(-30deg)",
@@ -182,11 +182,11 @@ export function WorkSection({ isActive }: WorkSectionProps) {
           href="/portfolio"
           className="relative flex-shrink-0 flex items-center justify-center overflow-hidden"
           style={{
-            width: "clamp(140px, 16vw, 240px)",
+            width: "clamp(120px, 20vw, 240px)",
             aspectRatio: "16/9",
             borderRadius: "20px",
             backgroundColor: "var(--indaco)",
-            marginLeft: "-2%",
+            marginLeft: "clamp(-40px, -8vw, -2%)",
             transform: cardsVisible
               ? `rotate(${hoveredCard === portfolioItems.length ? 0 : -12}deg) scale(${hoveredCard === portfolioItems.length ? 1.15 : 0.75})`
               : "translateY(120vh) rotate(-30deg)",
