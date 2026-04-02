@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { motion } from "motion/react";
 
 interface HeroSlideProps {
   isActive: boolean;
@@ -115,12 +116,20 @@ export function HeroSlide({
               transition: `transform 0.9s cubic-bezier(0.22, 1, 0.36, 1) ${totalBeforeWords * 0.06}s, opacity 0.5s ease ${totalBeforeWords * 0.06}s`,
             }}
           >
-            <span
-              className="relative z-10 text-white px-3 md:px-5 py-0.5"
-              style={{ backgroundColor: "var(--indaco)" }}
-            >
+            <span className="relative z-10 text-white px-3 md:px-5 py-0.5">
               {highlight}
             </span>
+            <motion.span
+              className="absolute inset-0 z-0 origin-left"
+              style={{ backgroundColor: "var(--indaco)" }}
+              initial={{ scaleX: 0 }}
+              animate={{ scaleX: textVisible ? 1 : 0 }}
+              transition={{
+                duration: 0.7,
+                ease: [0.22, 1, 0.36, 1],
+                delay: totalBeforeWords * 0.06 + 0.2,
+              }}
+            />
           </span>
 
           {/* After text */}
