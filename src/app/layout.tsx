@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Space_Grotesk } from "next/font/google";
 import "./globals.css";
+import { SmoothCursor } from "@/components/ui/smooth-cursor";
 
 const latinoGothic = localFont({
   src: [
@@ -49,9 +50,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${latinoGothic.variable} ${spaceGrotesk.variable} h-full antialiased`}
+      className={`${latinoGothic.variable} ${spaceGrotesk.variable} h-full antialiased cursor-none`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <SmoothCursor />
+        {children}
+      </body>
     </html>
   );
 }

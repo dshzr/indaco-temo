@@ -180,7 +180,6 @@ export function SectionController({
       {/* Custom Scrollbar — Right Side */}
       <div
         className="fixed right-6 top-1/2 -translate-y-1/2 z-[60] flex flex-col items-center"
-        style={{ cursor: "var(--pointer)" }}
       >
         <div
           ref={scrollbarRef}

@@ -189,7 +189,6 @@ export default function Home() {
         {/* Custom Scrollbar */}
         <div
           className="fixed right-6 top-1/2 -translate-y-1/2 z-[60]"
-          style={{ cursor: "var(--pointer)" }}
         >
           <div
             ref={scrollbarRef}

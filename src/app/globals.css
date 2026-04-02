@@ -143,7 +143,6 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    cursor: var(--cursor);
   }
   body {
     @apply bg-background text-foreground;
@@ -153,9 +152,15 @@
     @apply font-sans;
     scroll-behavior: smooth;
   }
-  a, button, [role="button"], input[type="submit"], select {
-    cursor: var(--pointer);
-  }
+}
+
+* {
+  cursor: none !important;
+}
+input,
+textarea,
+select {
+  cursor: text !important;
 }
 
 /* ─── Global Animations ─── */
