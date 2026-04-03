@@ -2,9 +2,7 @@
  * Gera versões .webp das capas do portfólio (largura máx. 1280px).
  * Executar: node scripts/optimize-portfolio.mjs
  *
- * Para comprimir bg-intro.mp4 (~38MB), instala ffmpeg e usa algo como:
- * ffmpeg -i public/videos/bg-intro.mp4 -vf "scale=-2:720" -c:v libx264 -crf 28 -preset slow -an -movflags +faststart public/videos/bg-intro-sm.mp4
- * Depois troca o src no IntroSection ou substitui o ficheiro.
+ * Vídeo/poster do intro: npm run optimize:intro
  */
 
 import sharp from "sharp";

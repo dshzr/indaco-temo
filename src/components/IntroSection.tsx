@@ -11,6 +11,8 @@ interface IntroSectionProps {
 export function IntroSection({ onEnter }: IntroSectionProps) {
   const [isReady, setIsReady] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
+  /** Só liga fontes de vídeo após pintura inicial — melhora LCP e reduz contenção com JS. */
+  const [mediaReady, setMediaReady] = useState(false);
 
   const followSpring = { stiffness: 42, damping: 28, mass: 0.9 };
   const tiltSpring = { stiffness: 58, damping: 22, mass: 0.75 };
@@ -51,6 +53,27 @@ export function IntroSection({ onEnter }: IntroSectionProps) {
     return () => clearTimeout(t);
   }, []);
 
+  useEffect(() => {
+    let idleId: number | undefined;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    if (typeof window.requestIdleCallback === "function") {
+      idleId = window.requestIdleCallback(
+        () => {
+          setMediaReady(true);
+        },
+        { timeout: 1400 },
+      );
+    } else {
+      timeoutId = setTimeout(() => setMediaReady(true), 400);
+    }
+    return () => {
+      if (idleId !== undefined && typeof window.cancelIdleCallback === "function") {
+        window.cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== undefined) clearTimeout(timeoutId);
+    };
+  }, []);
+
   const handleClick = useCallback(() => {
     if (isExiting) return;
     setIsExiting(true);
@@ -78,18 +101,24 @@ export function IntroSection({ onEnter }: IntroSectionProps) {
           exit={{ opacity: 0 }}
           transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
         >
-          {/* Background video — local file */}
+          {/* Fundo: poster imediato; MP4 só após idle (bg-intro-sm.mp4 se existir). */}
           <video
             className="absolute inset-0 z-0 h-full w-full object-cover"
-            src="/videos/bg-intro.mp4"
-            poster="/images/intro-frame.webp"
+            poster="/images/intro-poster.webp"
             autoPlay
             muted
             loop
             playsInline
-            preload="metadata"
+            preload="none"
             disablePictureInPicture
-          />
+          >
+            {mediaReady ? (
+              <>
+                <source src="/videos/bg-intro-sm.mp4" type="video/mp4" />
+                <source src="/videos/bg-intro.mp4" type="video/mp4" />
+              </>
+            ) : null}
+          </video>
 
           {/* Subtle dark vignette overlay */}
           <div
@@ -121,15 +150,19 @@ export function IntroSection({ onEnter }: IntroSectionProps) {
             >
               <video
                 className="h-full w-full translate-x-[1mm] object-contain object-center"
-                src="/videos/hello-sphere.webm"
                 autoPlay
                 muted
                 loop
                 playsInline
-                preload="metadata"
+                preload="none"
                 disablePictureInPicture
-              />
+              >
+                {mediaReady ? (
+                  <source src="/videos/hello-sphere.webm" type="video/webm" />
+                ) : null}
+              </video>
             </div>
+
           </motion.div>
 
           {/* Bottom text */}
@@ -138,7 +171,7 @@ export function IntroSection({ onEnter }: IntroSectionProps) {
             style={{ fontSize: "clamp(16px, 1.35vw, 26px)" }}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: isReady ? 0.75 : 0, y: isReady ? 0 : 10 }}
-            transition={{ duration: 0.8, delay: 1.0, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.65, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
           >
             <span className="text-white">Click anywhere</span>
             <br />

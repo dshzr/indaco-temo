@@ -1,12 +1,31 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Header } from "@/components/Header";
-import { HeroSlide } from "@/components/HeroSection";
-import { MethodSection } from "@/components/MethodSection";
-import { WorkSection } from "@/components/WorkSection";
-import { IntroSection } from "@/components/IntroSection";
 import type { FloatingGeometricKind } from "@/components/FloatingShapeMatter";
+
+const IntroSection = dynamic(
+  () =>
+    import("@/components/IntroSection").then((m) => ({
+      default: m.IntroSection,
+    })),
+  { ssr: false },
+);
+
+const HeroSlide = dynamic(() =>
+  import("@/components/HeroSection").then((m) => ({ default: m.HeroSlide })),
+);
+
+const MethodSection = dynamic(() =>
+  import("@/components/MethodSection").then((m) => ({
+    default: m.MethodSection,
+  })),
+);
+
+const WorkSection = dynamic(() =>
+  import("@/components/WorkSection").then((m) => ({ default: m.WorkSection })),
+);
 
 const TOTAL_SECTIONS = 5;
 
