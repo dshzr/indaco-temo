@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import {
   InstagramIcon,
   LinkedInIcon,
@@ -9,9 +10,9 @@ import {
 } from "@/components/icons";
 
 const navLinks = [
-  { label: "HOME", href: "/", active: true },
-  { label: "PORTFOLIO", href: "/portfolio", active: false },
-  { label: "ABOUT", href: "/about", active: false },
+  { label: "HOME", href: "/", key: "home" },
+  { label: "PORTFOLIO", href: "/portfolio", key: "portfolio" },
+  { label: "ABOUT", href: "/about", key: "about" },
 ];
 
 const socialLinks = [
@@ -21,15 +22,25 @@ const socialLinks = [
   { icon: VimeoIcon, href: "https://vimeo.com/indaco", label: "Vimeo" },
 ];
 
-export function Header() {
+interface HeaderProps {
+  activePage?: "home" | "portfolio" | "about";
+}
+
+export function Header({ activePage = "home" }: HeaderProps) {
   return (
     <>
       {/* Top Logo */}
       <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center py-4 md:py-6">
-        <a href="/" className="text-black tracking-[0.3em] md:tracking-[0.5em] font-[800] text-[14px] md:text-[16px] uppercase"
-          style={{ fontFamily: "var(--font-latino-gothic), Latino Gothic WdEx, sans-serif" }}>
+        <motion.a 
+          href="/" 
+          initial={{ opacity: 0, y: -20, filter: "blur(4px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+          className="text-white tracking-[0.3em] md:tracking-[0.5em] font-[800] text-[14px] md:text-[16px] uppercase"
+          style={{ fontFamily: "var(--font-latino-gothic), Latino Gothic WdEx, sans-serif" }}
+        >
           I N D Λ C O
-        </a>
+        </motion.a>
       </header>
 
       {/* Bottom Navigation Bar */}
@@ -63,9 +74,11 @@ export function Header() {
               href={link.href}
               className={`
                 px-2 sm:px-3 md:px-8 py-1.5 md:py-2 text-[9px] sm:text-[11px] md:text-[14px] font-[800] uppercase tracking-wider transition-all duration-300 whitespace-nowrap
-                ${link.active
+                ${link.key === activePage
                   ? "bg-[var(--lime)] text-black rounded-full"
-                  : "text-black hover:text-[var(--indaco)]"
+                  : activePage === "portfolio"
+                    ? "text-white hover:text-[var(--lime)]"
+                    : "text-black hover:text-[var(--indaco)]"
                 }
               `}
             >
