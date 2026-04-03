@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Space_Grotesk } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ClickSound } from "@/components/ClickSound";
 import "./globals.css";
 
@@ -64,6 +65,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <ClickSound />
         {children}
+        <SpeedInsights />
       </body>
     </html>
   );
