@@ -3,25 +3,23 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { motion } from "motion/react";
+import { FloatingShapeMatter } from "@/components/FloatingShapeMatter";
 
 interface HeroSlideProps {
   isActive: boolean;
-  /** Text before the highlighted word */
+  /** false força criatura estática (CSS); por omissão usa Matter na viewport. */
+  useViewportDrift?: boolean;
   before: string;
-  /** The highlighted word with indaco background */
   highlight: string;
-  /** Text after the highlighted word */
   after: string;
-  /** Whether "after" goes on a new line */
   multiline: boolean;
-  /** 3D creature image source */
   creatureSrc: string;
-  /** 3D creature alt text */
   creatureAlt: string;
 }
 
 export function HeroSlide({
   isActive,
+  useViewportDrift = true,
   before,
   highlight,
   after,
@@ -46,36 +44,48 @@ export function HeroSlide({
   const afterWords = after ? after.split(" ") : [];
   const totalBeforeWords = beforeWords.length;
 
+  /** Matter gere o seu próprio atraso + pop; texto continua com creatureVisible. */
+  const showMatter = useViewportDrift && isActive;
+
   return (
     <div className="relative w-full h-full flex items-center justify-center">
-      {/* 3D Creature — Left */}
-      <div
-        className="absolute left-[-5%] md:left-[8%] top-[10%] md:top-1/2 z-10 w-[200px] md:w-[420px]"
-        style={{
-          transform: creatureVisible
-            ? "translateY(-55%) scale(1) rotate(0deg)"
-            : "translateY(-55%) scale(0.3) rotate(-20deg)",
-          opacity: creatureVisible ? 0.6 : 0,
-          transition:
-            "transform 1.2s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.8s ease",
-        }}
-      >
+      {showMatter ? (
+        <FloatingShapeMatter
+          src={creatureSrc}
+          alt={creatureAlt}
+          width={320}
+          height={320}
+          className="opacity-60 md:opacity-100 drop-shadow-2xl"
+        />
+      ) : (
         <div
-          className="md:opacity-100 opacity-60"
+          className="absolute left-[-5%] md:left-[8%] top-[10%] md:top-1/2 z-10 w-[200px] md:w-[420px]"
           style={{
-            animation: isActive ? "float 6s ease-in-out infinite" : "none",
+            transform: creatureVisible
+              ? "translateY(-55%) scale(1) rotate(0deg)"
+              : "translateY(-55%) scale(0.3) rotate(-20deg)",
+            opacity: creatureVisible ? 0.6 : 0,
+            transition:
+              "transform 1.2s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.8s ease",
           }}
         >
-          <Image
-            src={creatureSrc}
-            alt={creatureAlt}
-            width={420}
-            height={420}
-            className="drop-shadow-2xl w-full h-auto"
-            priority
-          />
+          <div
+            className="md:opacity-100 opacity-60"
+            style={{
+              animation: isActive ? "float 6s ease-in-out infinite" : "none",
+            }}
+          >
+            <Image
+              src={creatureSrc}
+              alt={creatureAlt}
+              width={420}
+              height={420}
+              className="drop-shadow-2xl w-full h-auto"
+              priority
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Center Text */}
       <div className="relative z-20 text-center w-full max-w-[850px] px-4 md:px-8">
@@ -88,7 +98,6 @@ export function HeroSlide({
             fontSize: "clamp(28px, 5.1vw, 80px)",
           }}
         >
-          {/* Before words — each word pops in */}
           {beforeWords.map((word, wi) => (
             <span
               key={`b-${wi}`}
@@ -105,7 +114,6 @@ export function HeroSlide({
             </span>
           ))}
 
-          {/* Highlighted word */}
           <span
             className="inline-block relative"
             style={{
@@ -132,7 +140,6 @@ export function HeroSlide({
             />
           </span>
 
-          {/* After text */}
           {after && (
             <>
               {multiline && <br />}

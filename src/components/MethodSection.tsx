@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
+import { FloatingShapeMatter } from "@/components/FloatingShapeMatter";
 
 const timelineItems = [
   {
@@ -195,32 +195,16 @@ export function MethodSection({ isActive }: MethodSectionProps) {
         })}
       </div>
 
-      {/* 3D Shape — decorative */}
-      <div
-        className="absolute right-[3%] bottom-[8%] z-0"
-        style={{
-          transform: creatureVisible
-            ? "translateY(0) scale(1) rotate(0deg)"
-            : "translateY(40px) scale(0.5) rotate(15deg)",
-          opacity: creatureVisible ? 0.6 : 0,
-          transition:
-            "transform 1.2s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.8s ease",
-        }}
-      >
-        <div
-          style={{
-            animation: isActive ? "float 7s ease-in-out infinite 2s" : "none",
-          }}
-        >
-          <Image
-            src="/images/shapes/3.png"
-            alt="3D Shape"
-            width={220}
-            height={220}
-            className="drop-shadow-xl"
-          />
-        </div>
-      </div>
+      {/* Shape — Matter.js; acima do texto/timeline (z-10), pointer-events none */}
+      {isActive ? (
+        <FloatingShapeMatter
+          src="/images/shapes/3.png"
+          alt="3D Shape"
+          width={260}
+          height={260}
+          className="opacity-60 drop-shadow-xl"
+        />
+      ) : null}
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { FloatingShapeMatter } from "@/components/FloatingShapeMatter";
 
 interface PortfolioItem {
   title: string;
@@ -57,7 +58,6 @@ export function WorkSection({ isActive }: WorkSectionProps) {
   const [titleVisible, setTitleVisible] = useState(false);
   const [cardsVisible, setCardsVisible] = useState(false);
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
-
   useEffect(() => {
     if (isActive) {
       setTimeout(() => setTitleVisible(true), 100);
@@ -214,6 +214,16 @@ export function WorkSection({ isActive }: WorkSectionProps) {
           </span>
         </a>
       </div>
+
+      {isActive ? (
+        <FloatingShapeMatter
+          src="/images/shapes/2.png"
+          alt=""
+          width={240}
+          height={240}
+          className="opacity-55 drop-shadow-xl"
+        />
+      ) : null}
     </div>
   );
 }
