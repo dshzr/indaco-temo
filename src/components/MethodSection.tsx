@@ -84,16 +84,30 @@ export function MethodSection({ isActive }: MethodSectionProps) {
 
       {/* Timeline */}
       <div className="relative flex flex-col md:flex-row items-center justify-evenly w-full max-w-[1100px]">
-        {/* Horizontal Line (desktop) */}
-        <div
-          className="hidden md:block absolute top-1/2 left-[80px] right-[80px] h-[12px] rounded-full -translate-y-1/2"
-          style={{
-            backgroundColor: "var(--indaco)",
-            transform: `translateY(-50%) scaleX(${lineVisible ? 1 : 0})`,
-            transformOrigin: "left",
-            transition: "transform 1.8s cubic-bezier(0.22, 1, 0.36, 1)",
-          }}
-        />
+        {/* Horizontal Wave (desktop) */}
+        <div className="hidden md:block absolute top-1/2 left-0 right-0 h-[200px] -translate-y-1/2 pointer-events-none z-0">
+          <svg 
+            width="100%" 
+            height="100%" 
+            viewBox="0 0 100 100" 
+            preserveAspectRatio="none"
+            className="overflow-visible"
+          >
+            <path 
+              d="M -5,89 L 20,89 C 35,89 35,11 50,11 C 65,11 65,89 80,89 L 105,89"
+              fill="none" 
+              stroke="var(--indaco)" 
+              strokeWidth="12" 
+              strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
+              style={{
+                strokeDasharray: 1500,
+                strokeDashoffset: lineVisible ? 0 : 1500,
+                transition: "stroke-dashoffset 2.5s cubic-bezier(0.22, 1, 0.36, 1)"
+              }}
+            />
+          </svg>
+        </div>
 
         {/* Vertical Line (mobile) */}
         <div
@@ -116,7 +130,9 @@ export function MethodSection({ isActive }: MethodSectionProps) {
               {/* Text content — above or below dot depending on invert */}
               <div
                 className={`flex flex-col items-center gap-1.5 ${
-                  isInvert ? "md:order-2" : "md:order-0"
+                  isInvert 
+                    ? "md:order-2 md:h-[140px] md:justify-start mt-2 md:mt-0" 
+                    : "md:order-0 md:h-[140px] md:justify-end mb-2 md:mb-0"
                 }`}
               >
                 <h3
