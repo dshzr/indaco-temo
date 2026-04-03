@@ -5,6 +5,7 @@ import { Header } from "@/components/Header";
 import { HeroSlide } from "@/components/HeroSection";
 import { MethodSection } from "@/components/MethodSection";
 import { WorkSection } from "@/components/WorkSection";
+import { IntroSection } from "@/components/IntroSection";
 
 const TOTAL_SECTIONS = 5;
 
@@ -33,12 +34,22 @@ const heroSlides = [
 ];
 
 export default function Home() {
+  const [showIntro, setShowIntro] = useState(true);
+  const [siteReady, setSiteReady] = useState(false);
   const [activeSection, setActiveSection] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const scrollbarRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastWheelTime = useRef(0);
+
+  const handleIntroEnter = useCallback(() => {
+    setShowIntro(false);
+    // Small delay to let the main content appear smoothly
+    setTimeout(() => {
+      setSiteReady(true);
+    }, 100);
+  }, []);
 
   const goToSection = useCallback(
     (index: number) => {
@@ -58,6 +69,8 @@ export default function Home() {
 
   // Wheel handler
   useEffect(() => {
+    if (showIntro) return;
+
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
       const now = Date.now();
@@ -73,10 +86,12 @@ export default function Home() {
     return () => {
       if (el) el.removeEventListener("wheel", handleWheel);
     };
-  }, [activeSection, goToSection]);
+  }, [activeSection, goToSection, showIntro]);
 
   // Keyboard handler
   useEffect(() => {
+    if (showIntro) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowDown" || e.key === "PageDown") {
         e.preventDefault();
@@ -88,10 +103,12 @@ export default function Home() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activeSection, goToSection]);
+  }, [activeSection, goToSection, showIntro]);
 
   // Touch handler
   useEffect(() => {
+    if (showIntro) return;
+
     let touchStartY = 0;
     const handleTouchStart = (e: TouchEvent) => {
       touchStartY = e.touches[0].clientY;
@@ -114,7 +131,7 @@ export default function Home() {
         el.removeEventListener("touchend", handleTouchEnd);
       }
     };
-  }, [activeSection, goToSection]);
+  }, [activeSection, goToSection, showIntro]);
 
   // Scrollbar drag
   const handleScrollbarDrag = useCallback(
@@ -150,7 +167,7 @@ export default function Home() {
     ...heroSlides.map((slide, i) => (
       <HeroSlide
         key={`hero-${i}`}
-        isActive={activeSection === i}
+        isActive={activeSection === i && siteReady}
         before={slide.before}
         highlight={slide.highlight}
         after={slide.after}
@@ -165,11 +182,29 @@ export default function Home() {
 
   return (
     <>
-      <Header />
+      {/* Intro Overlay */}
+      {showIntro && <IntroSection onEnter={handleIntroEnter} />}
+
+      {/* Header — hidden during intro */}
+      <div
+        style={{
+          opacity: showIntro ? 0 : 1,
+          transition: "opacity 0.8s ease 0.3s",
+          pointerEvents: showIntro ? "none" : "auto",
+        }}
+      >
+        <Header />
+      </div>
+
+      {/* Main Site */}
       <div
         ref={containerRef}
         className="relative w-full h-screen overflow-hidden"
-        style={{ backgroundColor: "var(--bg-light)" }}
+        style={{
+          backgroundColor: "var(--bg-light)",
+          opacity: showIntro ? 0 : 1,
+          transition: "opacity 1s ease",
+        }}
       >
         {sections.map((section, index) => (
           <div
@@ -189,6 +224,10 @@ export default function Home() {
         {/* Custom Scrollbar */}
         <div
           className="fixed right-6 top-1/2 -translate-y-1/2 z-[60]"
+          style={{
+            opacity: showIntro ? 0 : 1,
+            transition: "opacity 0.5s ease 0.5s",
+          }}
         >
           <div
             ref={scrollbarRef}

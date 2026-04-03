@@ -147,20 +147,41 @@
   body {
     @apply bg-background text-foreground;
     overflow-x: hidden;
+    cursor: var(--cursor);
   }
   html {
     @apply font-sans;
     scroll-behavior: smooth;
+    cursor: var(--cursor);
   }
-}
 
-* {
-  cursor: none !important;
-}
-input,
-textarea,
-select {
-  cursor: text !important;
+  a,
+  button,
+  [role="button"],
+  [type="button"],
+  [type="submit"],
+  [type="reset"],
+  summary,
+  label[for],
+  select {
+    cursor: var(--pointer);
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    cursor: var(--pointer);
+  }
+
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  input[type="url"],
+  input[type="tel"],
+  input[type="number"],
+  textarea {
+    cursor: text;
+  }
 }
 
 /* ─── Global Animations ─── */
@@ -216,4 +237,27 @@ select {
 
 .animate-float {
   animation: float 6s ease-in-out infinite;
+}
+
+/* Intro Section Animations */
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(106, 119, 244, 0.1);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(106, 119, 244, 0.25);
+    transform: scale(1.02);
+  }
+}
+
+@keyframes fadeInSlow {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
