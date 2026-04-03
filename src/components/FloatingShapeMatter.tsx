@@ -22,7 +22,15 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
+
+import { cn } from "@/lib/utils";
+
+export type FloatingShapeGeometry =
+  | "image"
+  | "circle"
+  | "rectangle"
+  | "triangle";
 
 /**
  * Quando não está a ser arrastado: cruzeiro lento (min/max), topos de lançamento
@@ -66,15 +74,15 @@ function applyDriftWhenFree(
   }
 }
 
-export type FloatingShapeMatterProps = {
-  /** Caminho público da imagem, ex.: `/images/shapes/1.png` */
-  src: string;
+type FloatingShapeMatterBaseProps = {
   alt?: string;
   className?: string;
   /** Largura visual e corpo físico (px) */
   width?: number;
   /** Altura visual e corpo físico (px) */
   height?: number;
+  /** Cor / estilo preenchimento (Tailwind) quando `geometry` não é `image`. */
+  fillClassName?: string;
   /** 0 = sem salto, 1 = elástico máximo (paredes e forma) */
   restitution?: number;
   /** Menor = desliza mais tempo (ex.: 0.001–0.02) */
@@ -106,6 +114,19 @@ export type FloatingShapeMatterProps = {
   cursorActiveHotspot?: readonly [number, number];
 };
 
+export type FloatingShapeMatterProps = FloatingShapeMatterBaseProps &
+  (
+    | {
+        geometry?: "image";
+        /** Caminho público da imagem, ex.: `/images/shapes/1.png` */
+        src: string;
+      }
+    | {
+        geometry: "circle" | "rectangle" | "triangle";
+        src?: undefined;
+      }
+  );
+
 const defaultFloatProps = {
   width: 72,
   height: 72,
@@ -117,6 +138,139 @@ const defaultFloatProps = {
   angularDamping: 0.965,
   wallThickness: 80,
 } as const;
+
+/** Gradiente por omissão (lime → índigo Indaco). Sobrescrever com `fillClassName`. */
+const defaultFillClass =
+  "bg-gradient-to-br from-[var(--lime)] via-[#bef85a] to-[var(--indaco)]";
+
+export type FloatingGeometricKind = Exclude<FloatingShapeGeometry, "image">;
+
+const geometricShellClass =
+  "relative h-full w-full overflow-hidden ring-2 ring-black/[0.09] shadow-[0_16px_48px_-14px_rgba(0,0,0,0.22)]";
+
+/** Face SVG/CSS partilhada: preenchimento, contorno suave e reflexo animado. */
+export function FloatingGeometricFace({
+  geometry,
+  fillClassName,
+  className,
+}: {
+  geometry: FloatingGeometricKind;
+  fillClassName?: string;
+  className?: string;
+}) {
+  const gloss = (
+    <div
+      className="pointer-events-none absolute -inset-[32%] z-[1] bg-gradient-to-br from-white/45 via-white/[0.08] to-transparent animate-floating-shape-gloss"
+      aria-hidden
+    />
+  );
+
+  if (geometry === "circle") {
+    return (
+      <div className={cn(geometricShellClass, "rounded-full", className)}>
+        <div
+          className={cn(
+            "absolute inset-0 rounded-full",
+            defaultFillClass,
+            fillClassName,
+          )}
+        />
+        {gloss}
+      </div>
+    );
+  }
+  if (geometry === "rectangle") {
+    return (
+      <div
+        className={cn(
+          geometricShellClass,
+          "rounded-[min(10px,9%)]",
+          className,
+        )}
+      >
+        <div
+          className={cn(
+            "absolute inset-0 rounded-[min(10px,9%)]",
+            defaultFillClass,
+            fillClassName,
+          )}
+        />
+        {gloss}
+      </div>
+    );
+  }
+  return (
+    <div
+      className={cn(
+        geometricShellClass,
+        "[clip-path:polygon(50%_0%,0%_100%,100%_100%)]",
+        className,
+      )}
+    >
+      <div
+        className={cn("absolute inset-0", defaultFillClass, fillClassName)}
+      />
+      {gloss}
+    </div>
+  );
+}
+
+function resolveGeometry(
+  props: FloatingShapeMatterProps,
+): FloatingShapeGeometry {
+  if (props.geometry === undefined || props.geometry === "image") {
+    return "image";
+  }
+  return props.geometry;
+}
+
+/** Distância do centro ao ponto mais exterior (limites de viewport). */
+function shapeHalfExtent(
+  geometry: FloatingShapeGeometry,
+  bw: number,
+  bh: number,
+): number {
+  const halfW = bw / 2;
+  const halfH = bh / 2;
+  if (geometry === "circle") {
+    return Math.min(halfW, halfH);
+  }
+  if (geometry === "triangle") {
+    return Math.max(halfH, Math.hypot(halfW, halfH));
+  }
+  return Math.hypot(halfW, halfH);
+}
+
+function createFloatingBody(
+  geometry: FloatingShapeGeometry,
+  x: number,
+  y: number,
+  bw: number,
+  bh: number,
+  opts: Parameters<typeof Bodies.rectangle>[4],
+): MatterBody {
+  if (geometry === "circle") {
+    const r = Math.min(bw, bh) / 2;
+    return Bodies.circle(x, y, r, opts);
+  }
+  if (geometry === "triangle") {
+    const side = Math.min(bw, bh);
+    const circumradius = side / Math.sqrt(3);
+    const tri = Bodies.polygon(x, y, 3, circumradius, opts);
+    Body.setAngle(tri, -Math.PI / 2);
+    return tri;
+  }
+  if (geometry === "rectangle") {
+    return Bodies.rectangle(x, y, bw, bh, {
+      ...opts,
+      chamfer: { radius: Math.min(6, bw * 0.08) },
+    });
+  }
+  return Bodies.rectangle(x, y, bw, bh, {
+    ...opts,
+    chamfer: { radius: Math.min(6, bw * 0.08) },
+  });
+}
 
 /** Só o shape é detetado pelo rato; paredes ficam de fora do arrasto. */
 const CATEGORY_DRAGGABLE = 0x0002;
@@ -202,15 +356,16 @@ function createEdgeWalls(
   ];
 }
 
-/** Limites do centro do shape no ecrã (raio circunscrito ao rect). */
+/** Limites do centro do shape no ecrã. */
 function getViewportCenterBounds(
   vw: number,
   vh: number,
-  halfW: number,
-  halfH: number,
+  geometry: FloatingShapeGeometry,
+  bw: number,
+  bh: number,
   pad: number,
 ) {
-  const inset = Math.hypot(halfW, halfH) + pad;
+  const inset = shapeHalfExtent(geometry, bw, bh) + pad;
   const minX = inset;
   const maxX = vw - inset;
   const minY = inset;
@@ -229,10 +384,11 @@ function clampMouseTargetToViewport(
   mouse: MatterMouseWithHandlers,
   vw: number,
   vh: number,
-  halfW: number,
-  halfH: number,
+  geometry: FloatingShapeGeometry,
+  bw: number,
+  bh: number,
 ) {
-  const b = getViewportCenterBounds(vw, vh, halfW, halfH, 2);
+  const b = getViewportCenterBounds(vw, vh, geometry, bw, bh, 2);
   if (!b.ok) return;
   mouse.position.x = Math.min(Math.max(mouse.position.x, b.minX), b.maxX);
   mouse.position.y = Math.min(Math.max(mouse.position.y, b.minY), b.maxY);
@@ -243,10 +399,11 @@ function clampBodyToViewport(
   body: MatterBody,
   vw: number,
   vh: number,
-  halfW: number,
-  halfH: number,
+  geometry: FloatingShapeGeometry,
+  bw: number,
+  bh: number,
 ) {
-  const b = getViewportCenterBounds(vw, vh, halfW, halfH, 2);
+  const b = getViewportCenterBounds(vw, vh, geometry, bw, bh, 2);
   if (!b.ok) return;
 
   let { x, y } = body.position;
@@ -282,11 +439,12 @@ function clampBodyToViewport(
 function randomPositionInBounds(
   vw: number,
   vh: number,
-  halfW: number,
-  halfH: number,
+  geometry: FloatingShapeGeometry,
+  bw: number,
+  bh: number,
 ) {
   const pad = 8;
-  const inset = Math.hypot(halfW, halfH) + pad;
+  const inset = shapeHalfExtent(geometry, bw, bh) + pad;
   const minX = inset;
   const maxX = Math.max(minX, vw - inset);
   const minY = inset;
@@ -301,33 +459,43 @@ function randomPositionInBounds(
  * Forma com física Matter.js na viewport: loop contínuo, movimento lento,
  * choques suaves nas bordas (ponta a ponta). Portal em `document.body`.
  */
-export function FloatingShapeMatter({
-  src,
-  alt = "",
-  className = "",
-  width = defaultFloatProps.width,
-  height = defaultFloatProps.height,
-  restitution = defaultFloatProps.restitution,
-  frictionAir = defaultFloatProps.frictionAir,
-  initialSpeed = defaultFloatProps.initialSpeed,
-  minSpeed = defaultFloatProps.minSpeed,
-  maxSpeed = defaultFloatProps.maxSpeed,
-  angularDamping = defaultFloatProps.angularDamping,
-  wallThickness = defaultFloatProps.wallThickness,
-  zIndex = 49,
-  appearDelayMs = 1000,
-  throwSpeedCap = 2.35,
-  cursorHoverSrc = "/images/cursors/pointer.svg",
-  cursorHoverHotspot = [14, 10] as const,
-  cursorActiveSrc = "/images/cursors/cursor.svg",
-  cursorActiveHotspot = [6, 6] as const,
-}: FloatingShapeMatterProps) {
+export function FloatingShapeMatter(props: FloatingShapeMatterProps) {
+  const {
+    alt = "",
+    className = "",
+    width = defaultFloatProps.width,
+    height = defaultFloatProps.height,
+    fillClassName,
+    restitution = defaultFloatProps.restitution,
+    frictionAir = defaultFloatProps.frictionAir,
+    initialSpeed = defaultFloatProps.initialSpeed,
+    minSpeed = defaultFloatProps.minSpeed,
+    maxSpeed = defaultFloatProps.maxSpeed,
+    angularDamping = defaultFloatProps.angularDamping,
+    wallThickness = defaultFloatProps.wallThickness,
+    zIndex = 49,
+    appearDelayMs = 1000,
+    throwSpeedCap = 2.35,
+    cursorHoverSrc = "/images/cursors/pointer.svg",
+    cursorHoverHotspot = [14, 10] as const,
+    cursorActiveSrc = "/images/cursors/cursor.svg",
+    cursorActiveHotspot = [6, 6] as const,
+  } = props;
+
+  const reduceMotion = useReducedMotion();
+  const geometry = resolveGeometry(props);
+  const imageSrc =
+    props.geometry === undefined || props.geometry === "image"
+      ? props.src
+      : undefined;
+
   const visualRef = useRef<HTMLDivElement>(null);
   const [reveal, setReveal] = useState(false);
   const [pressing, setPressing] = useState(false);
   const propsRef = useRef({
     width,
     height,
+    geometry,
     restitution,
     frictionAir,
     initialSpeed,
@@ -338,18 +506,21 @@ export function FloatingShapeMatter({
     throwSpeedCap,
   });
 
-  propsRef.current = {
-    width,
-    height,
-    restitution,
-    frictionAir,
-    initialSpeed,
-    minSpeed,
-    maxSpeed,
-    angularDamping,
-    wallThickness,
-    throwSpeedCap,
-  };
+  useEffect(() => {
+    propsRef.current = {
+      width,
+      height,
+      geometry,
+      restitution,
+      frictionAir,
+      initialSpeed,
+      minSpeed,
+      maxSpeed,
+      angularDamping,
+      wallThickness,
+      throwSpeedCap,
+    };
+  });
 
   const scheduleResize = useRef<number | null>(null);
   const rafRef = useRef(0);
@@ -363,7 +534,7 @@ export function FloatingShapeMatter({
     setReveal(false);
     const id = window.setTimeout(() => setReveal(true), appearDelayMs);
     return () => window.clearTimeout(id);
-  }, [src, appearDelayMs]);
+  }, [imageSrc, appearDelayMs, geometry]);
 
   useLayoutEffect(() => {
     if (!portalTarget || !reveal) return;
@@ -389,18 +560,16 @@ export function FloatingShapeMatter({
       wallThickness: t,
     } = propsRef.current;
 
-    const halfW = bw / 2;
-    const halfH = bh / 2;
+    const g = propsRef.current.geometry;
 
-    const start = randomPositionInBounds(vw, vh, halfW, halfH);
+    const start = randomPositionInBounds(vw, vh, g, bw, bh);
     const angle = Math.random() * Math.PI * 2;
 
-    const ball = Bodies.rectangle(start.x, start.y, bw, bh, {
+    const ball = createFloatingBody(g, start.x, start.y, bw, bh, {
       restitution: rest,
       friction: 0.02,
       frictionAir: fAir,
       density: 0.001,
-      chamfer: { radius: Math.min(6, bw * 0.08) },
       label: "floating-shape",
       collisionFilter: {
         category: CATEGORY_DRAGGABLE,
@@ -462,14 +631,21 @@ export function FloatingShapeMatter({
       mouseConstraintApi._triggerEvents(mouseConstraint);
 
       if (mouseConstraint.body === ball && mouse.button === 0) {
-        clampMouseTargetToViewport(mouse, vw, vh, p.width / 2, p.height / 2);
+        clampMouseTargetToViewport(
+          mouse,
+          vw,
+          vh,
+          p.geometry,
+          p.width,
+          p.height,
+        );
       }
 
       Engine.update(engine, fixedDelta);
 
       const dragging = mouseConstraint.body !== null;
       if (!dragging) {
-        clampBodyToViewport(ball, vw, vh, p.width / 2, p.height / 2);
+        clampBodyToViewport(ball, vw, vh, p.geometry, p.width, p.height);
       }
       if (!dragging) {
         if (p.angularDamping < 1 && p.angularDamping >= 0) {
@@ -501,7 +677,7 @@ export function FloatingShapeMatter({
       walls = createEdgeWalls(vw, vh, p.wallThickness, p.restitution);
       Composite.add(world, walls);
 
-      clampBodyToViewport(ball, vw, vh, p.width / 2, p.height / 2);
+      clampBodyToViewport(ball, vw, vh, p.geometry, p.width, p.height);
     };
 
     const onResize = () => {
@@ -528,7 +704,7 @@ export function FloatingShapeMatter({
       World.clear(world, false);
       Engine.clear(engine);
     };
-  }, [src, portalTarget, reveal]);
+  }, [imageSrc, portalTarget, reveal, geometry]);
 
   const cursorCss = pressing
     ? `url("${cursorActiveSrc}") ${cursorActiveHotspot[0]} ${cursorActiveHotspot[1]}, crosshair`
@@ -580,15 +756,35 @@ export function FloatingShapeMatter({
             mass: 0.55,
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={src}
-            alt={alt}
-            width={width}
-            height={height}
-            className="h-full w-full select-none object-contain"
-            draggable={false}
-          />
+          {geometry === "image" && imageSrc ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={imageSrc}
+              alt={alt}
+              width={width}
+              height={height}
+              className="h-full w-full select-none object-contain"
+              draggable={false}
+            />
+          ) : geometry !== "image" ? (
+            <motion.div
+              className="h-full w-full origin-center"
+              animate={
+                reduceMotion ? undefined : { scale: [1, 1.007, 1] }
+              }
+              transition={{
+                duration: 3.9,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+            >
+              <FloatingGeometricFace
+                geometry={geometry}
+                fillClassName={fillClassName}
+                className="select-none"
+              />
+            </motion.div>
+          ) : null}
         </motion.div>
       </div>
     </div>

@@ -198,11 +198,11 @@ export function MethodSection({ isActive }: MethodSectionProps) {
       {/* Shape — Matter.js via portal (zIndex); opaco, por cima do conteúdo da secção */}
       {isActive ? (
         <FloatingShapeMatter
-          src="/images/shapes/3.png"
-          alt="3D Shape"
-          width={260}
-          height={260}
-          className="drop-shadow-xl"
+          geometry="triangle"
+          alt="Forma triangular"
+          width={180}
+          height={180}
+          className="drop-shadow-lg"
         />
       ) : null}
     </div>

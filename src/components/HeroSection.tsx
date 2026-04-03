@@ -1,20 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
-import { motion } from "motion/react";
-import { FloatingShapeMatter } from "@/components/FloatingShapeMatter";
+import { motion, useReducedMotion } from "motion/react";
+import {
+  FloatingGeometricFace,
+  FloatingShapeMatter,
+  type FloatingGeometricKind,
+} from "@/components/FloatingShapeMatter";
 
 interface HeroSlideProps {
   isActive: boolean;
-  /** false força criatura estática (CSS); por omissão usa Matter na viewport. */
+  /** false força forma estática (CSS); por omissão usa Matter na viewport. */
   useViewportDrift?: boolean;
   before: string;
   highlight: string;
   after: string;
   multiline: boolean;
-  creatureSrc: string;
-  creatureAlt: string;
+  shapeAlt: string;
+  shapeGeometry: FloatingGeometricKind;
 }
 
 export function HeroSlide({
@@ -24,9 +27,10 @@ export function HeroSlide({
   highlight,
   after,
   multiline,
-  creatureSrc,
-  creatureAlt,
+  shapeAlt,
+  shapeGeometry,
 }: HeroSlideProps) {
+  const reduceMotion = useReducedMotion();
   const [textVisible, setTextVisible] = useState(false);
   const [creatureVisible, setCreatureVisible] = useState(false);
 
@@ -51,11 +55,11 @@ export function HeroSlide({
     <div className="relative w-full h-full flex items-center justify-center">
       {showMatter ? (
         <FloatingShapeMatter
-          src={creatureSrc}
-          alt={creatureAlt}
-          width={320}
-          height={320}
-          className="drop-shadow-2xl"
+          geometry={shapeGeometry}
+          alt={shapeAlt}
+          width={200}
+          height={200}
+          className="drop-shadow-xl"
         />
       ) : (
         <div
@@ -70,19 +74,26 @@ export function HeroSlide({
           }}
         >
           <div
-            className="md:opacity-100 opacity-60"
+            className="md:opacity-100 opacity-60 aspect-square w-full max-w-[220px] md:max-w-[260px] mx-auto drop-shadow-xl"
             style={{
               animation: isActive ? "float 6s ease-in-out infinite" : "none",
             }}
           >
-            <Image
-              src={creatureSrc}
-              alt={creatureAlt}
-              width={420}
-              height={420}
-              className="drop-shadow-2xl w-full h-auto"
-              priority
-            />
+            <motion.div
+              className="h-full w-full"
+              role="img"
+              aria-label={shapeAlt}
+              animate={
+                reduceMotion ? undefined : { scale: [1, 1.007, 1] }
+              }
+              transition={{
+                duration: 3.9,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+            >
+              <FloatingGeometricFace geometry={shapeGeometry} />
+            </motion.div>
           </div>
         </div>
       )}

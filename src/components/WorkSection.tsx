@@ -217,11 +217,11 @@ export function WorkSection({ isActive }: WorkSectionProps) {
 
       {isActive ? (
         <FloatingShapeMatter
-          src="/images/shapes/2.png"
-          alt=""
-          width={240}
-          height={240}
-          className="drop-shadow-xl"
+          geometry="rectangle"
+          alt="Forma rectangular"
+          width={170}
+          height={170}
+          className="drop-shadow-lg"
         />
       ) : null}
     </div>

@@ -6,30 +6,37 @@ import { HeroSlide } from "@/components/HeroSection";
 import { MethodSection } from "@/components/MethodSection";
 import { WorkSection } from "@/components/WorkSection";
 import { IntroSection } from "@/components/IntroSection";
+import type { FloatingGeometricKind } from "@/components/FloatingShapeMatter";
 
 const TOTAL_SECTIONS = 5;
 
-const heroSlides = [
+const heroSlides: {
+  before: string;
+  highlight: string;
+  after: string;
+  multiline: boolean;
+  shape: { alt: string; geometry: FloatingGeometricKind };
+}[] = [
   {
     before: "It's",
     highlight: "Indaco",
     after: "isn't it?",
     multiline: true,
-    creature: { src: "/images/bunny.png", alt: "3D Bunny" },
+    shape: { alt: "Forma rectangular", geometry: "rectangle" },
   },
   {
     before: "Next time you wonder who to trust, the answer will be",
     highlight: "the same.",
     after: "",
     multiline: false,
-    creature: { src: "/images/mosquito.png", alt: "3D Creature" },
+    shape: { alt: "Forma triangular", geometry: "triangle" },
   },
   {
     before: "We're a digital content agency with a",
     highlight: "strategic",
     after: "approach.",
     multiline: true,
-    creature: { src: "/images/shapes/1.png", alt: "3D Shape" },
+    shape: { alt: "Forma circular", geometry: "circle" },
   },
 ];
 
@@ -224,8 +231,8 @@ export default function Home() {
         highlight={slide.highlight}
         after={slide.after}
         multiline={slide.multiline}
-        creatureSrc={slide.creature.src}
-        creatureAlt={slide.creature.alt}
+        shapeAlt={slide.shape.alt}
+        shapeGeometry={slide.shape.geometry}
       />
     )),
     <MethodSection key="method" isActive={activeSection === 3} />,

@@ -222,6 +222,30 @@
   75% { transform: translateY(-15px) rotate(1deg); }
 }
 
+/** Brilho / reflexo muito leve nas formas geométricas flutuantes */
+@keyframes floating-shape-gloss {
+  0%, 100% {
+    transform: translate(-10%, -6%) rotate(-3deg);
+    opacity: 0.45;
+  }
+  50% {
+    transform: translate(8%, 8%) rotate(4deg);
+    opacity: 0.82;
+  }
+}
+
+.animate-floating-shape-gloss {
+  animation: floating-shape-gloss 5.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-floating-shape-gloss {
+    animation: none;
+    opacity: 0.55;
+    transform: none;
+  }
+}
+
 @keyframes timelineLine {
   from { width: 15px; opacity: 0; }
   to { width: calc(100% - 200px); opacity: 1; }
