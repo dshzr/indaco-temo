@@ -114,7 +114,7 @@ const defaultFloatProps = {
   initialSpeed: 0.38,
   minSpeed: 0.28,
   maxSpeed: 0.48,
-  angularDamping: 0.984,
+  angularDamping: 0.965,
   wallThickness: 80,
 } as const;
 
@@ -379,7 +379,10 @@ export function FloatingShapeMatter({
       length: 0.01,
       stiffness: 0.12,
       damping: 0.1,
-    });
+    }) as MatterConstraint & { angularStiffness: number };
+    // Igual ao MouseConstraint.create do matter-js: 1 = sem torque pelo arrasto
+    // (omissão seria 0 → rotação forte quando o clique não é no centro).
+    dragConstraint.angularStiffness = 1;
 
     const mouseConstraint: MouseConstraintRuntime = {
       type: "mouseConstraint",
