@@ -55,7 +55,7 @@ export function HeroSlide({
           alt={creatureAlt}
           width={320}
           height={320}
-          className="opacity-60 md:opacity-100 drop-shadow-2xl"
+          className="drop-shadow-2xl"
         />
       ) : (
         <div

@@ -195,14 +195,14 @@ export function MethodSection({ isActive }: MethodSectionProps) {
         })}
       </div>
 
-      {/* Shape — Matter.js; acima do texto/timeline (z-10), pointer-events none */}
+      {/* Shape — Matter.js via portal (zIndex); opaco, por cima do conteúdo da secção */}
       {isActive ? (
         <FloatingShapeMatter
           src="/images/shapes/3.png"
           alt="3D Shape"
           width={260}
           height={260}
-          className="opacity-60 drop-shadow-xl"
+          className="drop-shadow-xl"
         />
       ) : null}
     </div>

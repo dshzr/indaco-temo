@@ -90,7 +90,7 @@ export type FloatingShapeMatterProps = {
   /** Espessura das paredes “invisíveis” (px) */
   wallThickness?: number;
   /**
-   * Por omissão acima do texto central (z-20) e abaixo do header/nav (z-50).
+   * Por omissão acima de texto/imagens da secção (z-20) e abaixo do header/nav (z-50).
    */
   zIndex?: number;
   /** ms após montar antes de mostrar o shape (física + pop). Por omissão 1000. */
@@ -202,6 +202,43 @@ function createEdgeWalls(
   ];
 }
 
+/** Limites do centro do shape no ecrã (raio circunscrito ao rect). */
+function getViewportCenterBounds(
+  vw: number,
+  vh: number,
+  halfW: number,
+  halfH: number,
+  pad: number,
+) {
+  const inset = Math.hypot(halfW, halfH) + pad;
+  const minX = inset;
+  const maxX = vw - inset;
+  const minY = inset;
+  const maxY = vh - inset;
+  return {
+    minX,
+    maxX,
+    minY,
+    maxY,
+    ok: maxX >= minX && maxY >= minY,
+  };
+}
+
+/** Durante o arrasto: o alvo do MouseConstraint não pede posições fora do ecrã → sem “lutar” com setPosition. */
+function clampMouseTargetToViewport(
+  mouse: MatterMouseWithHandlers,
+  vw: number,
+  vh: number,
+  halfW: number,
+  halfH: number,
+) {
+  const b = getViewportCenterBounds(vw, vh, halfW, halfH, 2);
+  if (!b.ok) return;
+  mouse.position.x = Math.min(Math.max(mouse.position.x, b.minX), b.maxX);
+  mouse.position.y = Math.min(Math.max(mouse.position.y, b.minY), b.maxY);
+}
+
+/** Mantém o centro do corpo dentro do ecrã (só no movimento livre; ver clamp no rato durante arrasto). */
 function clampBodyToViewport(
   body: MatterBody,
   vw: number,
@@ -209,29 +246,36 @@ function clampBodyToViewport(
   halfW: number,
   halfH: number,
 ) {
-  const pad = 2;
-  const minX = halfW + pad;
-  const maxX = vw - halfW - pad;
-  const minY = halfH + pad;
-  const maxY = vh - halfH - pad;
+  const b = getViewportCenterBounds(vw, vh, halfW, halfH, 2);
+  if (!b.ok) return;
+
   let { x, y } = body.position;
+  const v = Body.getVelocity(body);
+  let vx = v.x;
+  let vy = v.y;
   let moved = false;
-  if (x < minX) {
-    x = minX;
+
+  if (x < b.minX) {
+    x = b.minX;
+    vx = Math.max(0, vx);
     moved = true;
-  } else if (x > maxX) {
-    x = maxX;
+  } else if (x > b.maxX) {
+    x = b.maxX;
+    vx = Math.min(0, vx);
     moved = true;
   }
-  if (y < minY) {
-    y = minY;
+  if (y < b.minY) {
+    y = b.minY;
+    vy = Math.max(0, vy);
     moved = true;
-  } else if (y > maxY) {
-    y = maxY;
+  } else if (y > b.maxY) {
+    y = b.maxY;
+    vy = Math.min(0, vy);
     moved = true;
   }
   if (moved) {
     Body.setPosition(body, { x, y });
+    Body.setVelocity(body, { x: vx, y: vy });
   }
 }
 
@@ -242,10 +286,11 @@ function randomPositionInBounds(
   halfH: number,
 ) {
   const pad = 8;
-  const minX = halfW + pad;
-  const maxX = Math.max(minX, vw - halfW - pad);
-  const minY = halfH + pad;
-  const maxY = Math.max(minY, vh - halfH - pad);
+  const inset = Math.hypot(halfW, halfH) + pad;
+  const minX = inset;
+  const maxX = Math.max(minX, vw - inset);
+  const minY = inset;
+  const maxY = Math.max(minY, vh - inset);
   return {
     x: minX + Math.random() * (maxX - minX),
     y: minY + Math.random() * (maxY - minY),
@@ -269,7 +314,7 @@ export function FloatingShapeMatter({
   maxSpeed = defaultFloatProps.maxSpeed,
   angularDamping = defaultFloatProps.angularDamping,
   wallThickness = defaultFloatProps.wallThickness,
-  zIndex = 48,
+  zIndex = 49,
   appearDelayMs = 1000,
   throwSpeedCap = 2.35,
   cursorHoverSrc = "/images/cursors/pointer.svg",
@@ -412,13 +457,20 @@ export function FloatingShapeMatter({
     };
 
     const loop = () => {
+      const p = propsRef.current;
       mouseConstraintApi.update(mouseConstraint, Composite.allBodies(world));
       mouseConstraintApi._triggerEvents(mouseConstraint);
+
+      if (mouseConstraint.body === ball && mouse.button === 0) {
+        clampMouseTargetToViewport(mouse, vw, vh, p.width / 2, p.height / 2);
+      }
 
       Engine.update(engine, fixedDelta);
 
       const dragging = mouseConstraint.body !== null;
-      const p = propsRef.current;
+      if (!dragging) {
+        clampBodyToViewport(ball, vw, vh, p.width / 2, p.height / 2);
+      }
       if (!dragging) {
         if (p.angularDamping < 1 && p.angularDamping >= 0) {
           Body.setAngularVelocity(

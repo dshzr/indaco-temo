@@ -221,7 +221,7 @@ export function WorkSection({ isActive }: WorkSectionProps) {
           alt=""
           width={240}
           height={240}
-          className="opacity-55 drop-shadow-xl"
+          className="drop-shadow-xl"
         />
       ) : null}
     </div>
