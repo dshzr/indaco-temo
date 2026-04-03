@@ -4,10 +4,17 @@ import {
   Bodies,
   Body,
   Composite,
+  Constraint,
   Engine,
+  Mouse,
+  MouseConstraint,
   World,
 } from "matter-js";
-import type { Body as MatterBody } from "matter-js";
+import type {
+  Body as MatterBody,
+  Constraint as MatterConstraint,
+  Mouse as MatterMouseInstance,
+} from "matter-js";
 import {
   useEffect,
   useLayoutEffect,
@@ -17,12 +24,32 @@ import {
 import { createPortal } from "react-dom";
 import { motion } from "motion/react";
 
-/** Mantém deslocamento lento e contínuo (loop) entre rebites nas bordas. */
-function enforceDriftSpeed(body: MatterBody, min: number, max: number) {
-  const v = Body.getVelocity(body);
-  let vx = v.x;
-  let vy = v.y;
-  let speed = Math.hypot(vx, vy);
+/**
+ * Quando não está a ser arrastado: cruzeiro lento (min/max), topos de lançamento
+ * suavizados até à zona de cruzeiro, com teto absoluto no lançamento.
+ */
+function applyDriftWhenFree(
+  body: MatterBody,
+  min: number,
+  max: number,
+  throwCap: number,
+) {
+  let v = Body.getVelocity(body);
+  let speed = Math.hypot(v.x, v.y);
+
+  if (speed > throwCap && speed > 1e-6) {
+    const k = throwCap / speed;
+    Body.setVelocity(body, { x: v.x * k, y: v.y * k });
+    v = Body.getVelocity(body);
+    speed = Math.hypot(v.x, v.y);
+  }
+
+  if (speed > max + 0.02) {
+    const k = 0.965;
+    Body.setVelocity(body, { x: v.x * k, y: v.y * k });
+    v = Body.getVelocity(body);
+    speed = Math.hypot(v.x, v.y);
+  }
 
   if (speed < 1e-6) {
     const angle = Math.random() * Math.PI * 2;
@@ -33,12 +60,9 @@ function enforceDriftSpeed(body: MatterBody, min: number, max: number) {
     return;
   }
 
-  if (speed > max) {
-    const k = max / speed;
-    Body.setVelocity(body, { x: vx * k, y: vy * k });
-  } else if (speed < min) {
+  if (speed < min) {
     const k = min / speed;
-    Body.setVelocity(body, { x: vx * k, y: vy * k });
+    Body.setVelocity(body, { x: v.x * k, y: v.y * k });
   }
 }
 
@@ -71,6 +95,15 @@ export type FloatingShapeMatterProps = {
   zIndex?: number;
   /** ms após montar antes de mostrar o shape (física + pop). Por omissão 1000. */
   appearDelayMs?: number;
+  /** Limite de velocidade ao largar o arrasto (lancamento). */
+  throwSpeedCap?: number;
+  /** Cursor ao pairar (ficheiro em `public/`). */
+  cursorHoverSrc?: string;
+  /** Hotspot do cursor hover [x, y] em px. */
+  cursorHoverHotspot?: readonly [number, number];
+  /** Cursor enquanto pressiona / arrasta. */
+  cursorActiveSrc?: string;
+  cursorActiveHotspot?: readonly [number, number];
 };
 
 const defaultFloatProps = {
@@ -85,12 +118,54 @@ const defaultFloatProps = {
   wallThickness: 80,
 } as const;
 
+/** Só o shape é detetado pelo rato; paredes ficam de fora do arrasto. */
+const CATEGORY_DRAGGABLE = 0x0002;
+const CATEGORY_WALL = 0x0004;
+
+type MatterMouseWithHandlers = MatterMouseInstance & {
+  mousemove(e: Event): void;
+  mousedown(e: Event): void;
+  mouseup(e: Event): void;
+  mousewheel(e: Event): void;
+};
+
+function detachMatterMouse(mouse: MatterMouseWithHandlers) {
+  const el = mouse.element;
+  el.removeEventListener("mousemove", mouse.mousemove);
+  el.removeEventListener("mousedown", mouse.mousedown);
+  el.removeEventListener("mouseup", mouse.mouseup);
+  el.removeEventListener("wheel", mouse.mousewheel);
+  el.removeEventListener("touchmove", mouse.mousemove);
+  el.removeEventListener("touchstart", mouse.mousedown);
+  el.removeEventListener("touchend", mouse.mouseup);
+}
+
+type MouseConstraintRuntime = {
+  type: string;
+  mouse: MatterMouseWithHandlers;
+  element: HTMLElement | null;
+  body: MatterBody | null;
+  constraint: MatterConstraint;
+  collisionFilter: { category: number; mask: number };
+};
+
+type MouseConstraintStatic = typeof MouseConstraint & {
+  update(mc: MouseConstraintRuntime, bodies: MatterBody[]): void;
+  _triggerEvents(mc: MouseConstraintRuntime): void;
+};
+
+const mouseConstraintApi = MouseConstraint as unknown as MouseConstraintStatic;
+
 function createEdgeWalls(
   vw: number,
   vh: number,
   t: number,
   restitution: number,
 ): MatterBody[] {
+  const wallFilter = {
+    category: CATEGORY_WALL,
+    mask: 0xffffffff,
+  };
   return [
     Bodies.rectangle(vw / 2, -t / 2, vw + t * 2, t, {
       isStatic: true,
@@ -98,6 +173,7 @@ function createEdgeWalls(
       friction: 0,
       frictionStatic: 0,
       label: "wall-top",
+      collisionFilter: wallFilter,
     }),
     Bodies.rectangle(vw / 2, vh + t / 2, vw + t * 2, t, {
       isStatic: true,
@@ -105,6 +181,7 @@ function createEdgeWalls(
       friction: 0,
       frictionStatic: 0,
       label: "wall-bottom",
+      collisionFilter: wallFilter,
     }),
     Bodies.rectangle(-t / 2, vh / 2, t, vh + t * 2, {
       isStatic: true,
@@ -112,6 +189,7 @@ function createEdgeWalls(
       friction: 0,
       frictionStatic: 0,
       label: "wall-left",
+      collisionFilter: wallFilter,
     }),
     Bodies.rectangle(vw + t / 2, vh / 2, t, vh + t * 2, {
       isStatic: true,
@@ -119,6 +197,7 @@ function createEdgeWalls(
       friction: 0,
       frictionStatic: 0,
       label: "wall-right",
+      collisionFilter: wallFilter,
     }),
   ];
 }
@@ -192,9 +271,15 @@ export function FloatingShapeMatter({
   wallThickness = defaultFloatProps.wallThickness,
   zIndex = 48,
   appearDelayMs = 1000,
+  throwSpeedCap = 2.35,
+  cursorHoverSrc = "/images/cursors/pointer.svg",
+  cursorHoverHotspot = [14, 10] as const,
+  cursorActiveSrc = "/images/cursors/cursor.svg",
+  cursorActiveHotspot = [6, 6] as const,
 }: FloatingShapeMatterProps) {
   const visualRef = useRef<HTMLDivElement>(null);
   const [reveal, setReveal] = useState(false);
+  const [pressing, setPressing] = useState(false);
   const propsRef = useRef({
     width,
     height,
@@ -205,6 +290,7 @@ export function FloatingShapeMatter({
     maxSpeed,
     angularDamping,
     wallThickness,
+    throwSpeedCap,
   });
 
   propsRef.current = {
@@ -217,6 +303,7 @@ export function FloatingShapeMatter({
     maxSpeed,
     angularDamping,
     wallThickness,
+    throwSpeedCap,
   };
 
   const scheduleResize = useRef<number | null>(null);
@@ -270,6 +357,10 @@ export function FloatingShapeMatter({
       density: 0.001,
       chamfer: { radius: Math.min(6, bw * 0.08) },
       label: "floating-shape",
+      collisionFilter: {
+        category: CATEGORY_DRAGGABLE,
+        mask: 0xffffffff,
+      },
     });
 
     Body.setVelocity(ball, {
@@ -279,6 +370,32 @@ export function FloatingShapeMatter({
 
     let walls = createEdgeWalls(vw, vh, t, rest);
     Composite.add(world, [...walls, ball]);
+
+    const mouse = Mouse.create(document.body) as MatterMouseWithHandlers;
+    const dragConstraint = Constraint.create({
+      label: "Mouse Constraint",
+      pointA: mouse.position,
+      pointB: { x: 0, y: 0 },
+      length: 0.01,
+      stiffness: 0.12,
+      damping: 0.1,
+    });
+
+    const mouseConstraint: MouseConstraintRuntime = {
+      type: "mouseConstraint",
+      mouse,
+      element: null,
+      body: null,
+      constraint: dragConstraint,
+      collisionFilter: {
+        category: 0x0001,
+        mask: CATEGORY_DRAGGABLE,
+      },
+    };
+    Composite.add(
+      world,
+      mouseConstraint as unknown as Parameters<typeof Composite.add>[1],
+    );
 
     const fixedDelta = 1000 / 60;
 
@@ -292,14 +409,27 @@ export function FloatingShapeMatter({
     };
 
     const loop = () => {
+      mouseConstraintApi.update(mouseConstraint, Composite.allBodies(world));
+      mouseConstraintApi._triggerEvents(mouseConstraint);
+
       Engine.update(engine, fixedDelta);
 
+      const dragging = mouseConstraint.body !== null;
       const p = propsRef.current;
-      const damp = p.angularDamping;
-      if (damp < 1 && damp >= 0) {
-        Body.setAngularVelocity(ball, ball.angularVelocity * damp);
+      if (!dragging) {
+        if (p.angularDamping < 1 && p.angularDamping >= 0) {
+          Body.setAngularVelocity(
+            ball,
+            ball.angularVelocity * p.angularDamping,
+          );
+        }
+        applyDriftWhenFree(
+          ball,
+          p.minSpeed,
+          p.maxSpeed,
+          p.throwSpeedCap,
+        );
       }
-      enforceDriftSpeed(ball, p.minSpeed, p.maxSpeed);
 
       syncVisual();
       rafRef.current = window.requestAnimationFrame(loop);
@@ -339,10 +469,15 @@ export function FloatingShapeMatter({
       }
       cancelAnimationFrame(rafRef.current);
       rafRef.current = 0;
+      detachMatterMouse(mouse);
       World.clear(world, false);
       Engine.clear(engine);
     };
   }, [src, portalTarget, reveal]);
+
+  const cursorCss = pressing
+    ? `url("${cursorActiveSrc}") ${cursorActiveHotspot[0]} ${cursorActiveHotspot[1]}, crosshair`
+    : `url("${cursorHoverSrc}") ${cursorHoverHotspot[0]} ${cursorHoverHotspot[1]}, pointer`;
 
   const overlay = (
     <div
@@ -352,8 +487,32 @@ export function FloatingShapeMatter({
     >
       <div
         ref={visualRef}
-        className={`absolute left-0 top-0 will-change-transform ${className}`}
-        style={{ width, height }}
+        data-no-section-advance
+        data-floating-shape
+        className={`pointer-events-auto absolute left-0 top-0 touch-none will-change-transform ${className}`}
+        style={{
+          width,
+          height,
+          cursor: cursorCss,
+        }}
+        onPointerDown={(e) => {
+          setPressing(true);
+          if (e.currentTarget instanceof HTMLElement) {
+            e.currentTarget.setPointerCapture(e.pointerId);
+          }
+        }}
+        onPointerUp={(e) => {
+          setPressing(false);
+          if (e.currentTarget instanceof HTMLElement) {
+            try {
+              e.currentTarget.releasePointerCapture(e.pointerId);
+            } catch {
+              /* já libertado */
+            }
+          }
+        }}
+        onPointerCancel={() => setPressing(false)}
+        onLostPointerCapture={() => setPressing(false)}
       >
         <motion.div
           className="h-full w-full origin-center"
