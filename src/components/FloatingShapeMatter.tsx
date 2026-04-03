@@ -1,15 +1,5 @@
 "use client";
 
-import {
-  Bodies,
-  Body,
-  Composite,
-  Constraint,
-  Engine,
-  Mouse,
-  MouseConstraint,
-  World,
-} from "matter-js";
 import type {
   Body as MatterBody,
   Constraint as MatterConstraint,
@@ -32,36 +22,39 @@ export type FloatingShapeGeometry =
   | "rectangle"
   | "triangle";
 
+type MatterNS = typeof import("matter-js");
+
 /**
  * Quando não está a ser arrastado: cruzeiro lento (min/max), topos de lançamento
  * suavizados até à zona de cruzeiro, com teto absoluto no lançamento.
  */
 function applyDriftWhenFree(
+  M: MatterNS,
   body: MatterBody,
   min: number,
   max: number,
   throwCap: number,
 ) {
-  let v = Body.getVelocity(body);
+  let v = M.Body.getVelocity(body);
   let speed = Math.hypot(v.x, v.y);
 
   if (speed > throwCap && speed > 1e-6) {
     const k = throwCap / speed;
-    Body.setVelocity(body, { x: v.x * k, y: v.y * k });
-    v = Body.getVelocity(body);
+    M.Body.setVelocity(body, { x: v.x * k, y: v.y * k });
+    v = M.Body.getVelocity(body);
     speed = Math.hypot(v.x, v.y);
   }
 
   if (speed > max + 0.02) {
     const k = 0.965;
-    Body.setVelocity(body, { x: v.x * k, y: v.y * k });
-    v = Body.getVelocity(body);
+    M.Body.setVelocity(body, { x: v.x * k, y: v.y * k });
+    v = M.Body.getVelocity(body);
     speed = Math.hypot(v.x, v.y);
   }
 
   if (speed < 1e-6) {
     const angle = Math.random() * Math.PI * 2;
-    Body.setVelocity(body, {
+    M.Body.setVelocity(body, {
       x: Math.cos(angle) * min,
       y: Math.sin(angle) * min,
     });
@@ -70,7 +63,7 @@ function applyDriftWhenFree(
 
   if (speed < min) {
     const k = min / speed;
-    Body.setVelocity(body, { x: v.x * k, y: v.y * k });
+    M.Body.setVelocity(body, { x: v.x * k, y: v.y * k });
   }
 }
 
@@ -242,31 +235,32 @@ function shapeHalfExtent(
 }
 
 function createFloatingBody(
+  M: MatterNS,
   geometry: FloatingShapeGeometry,
   x: number,
   y: number,
   bw: number,
   bh: number,
-  opts: Parameters<typeof Bodies.rectangle>[4],
+  opts: NonNullable<Parameters<MatterNS["Bodies"]["rectangle"]>[4]>,
 ): MatterBody {
   if (geometry === "circle") {
     const r = Math.min(bw, bh) / 2;
-    return Bodies.circle(x, y, r, opts);
+    return M.Bodies.circle(x, y, r, opts);
   }
   if (geometry === "triangle") {
     const side = Math.min(bw, bh);
     const circumradius = side / Math.sqrt(3);
-    const tri = Bodies.polygon(x, y, 3, circumradius, opts);
-    Body.setAngle(tri, -Math.PI / 2);
+    const tri = M.Bodies.polygon(x, y, 3, circumradius, opts);
+    M.Body.setAngle(tri, -Math.PI / 2);
     return tri;
   }
   if (geometry === "rectangle") {
-    return Bodies.rectangle(x, y, bw, bh, {
+    return M.Bodies.rectangle(x, y, bw, bh, {
       ...opts,
       chamfer: { radius: Math.min(6, bw * 0.08) },
     });
   }
-  return Bodies.rectangle(x, y, bw, bh, {
+  return M.Bodies.rectangle(x, y, bw, bh, {
     ...opts,
     chamfer: { radius: Math.min(6, bw * 0.08) },
   });
@@ -303,14 +297,8 @@ type MouseConstraintRuntime = {
   collisionFilter: { category: number; mask: number };
 };
 
-type MouseConstraintStatic = typeof MouseConstraint & {
-  update(mc: MouseConstraintRuntime, bodies: MatterBody[]): void;
-  _triggerEvents(mc: MouseConstraintRuntime): void;
-};
-
-const mouseConstraintApi = MouseConstraint as unknown as MouseConstraintStatic;
-
 function createEdgeWalls(
+  M: MatterNS,
   vw: number,
   vh: number,
   t: number,
@@ -321,7 +309,7 @@ function createEdgeWalls(
     mask: 0xffffffff,
   };
   return [
-    Bodies.rectangle(vw / 2, -t / 2, vw + t * 2, t, {
+    M.Bodies.rectangle(vw / 2, -t / 2, vw + t * 2, t, {
       isStatic: true,
       restitution,
       friction: 0,
@@ -329,7 +317,7 @@ function createEdgeWalls(
       label: "wall-top",
       collisionFilter: wallFilter,
     }),
-    Bodies.rectangle(vw / 2, vh + t / 2, vw + t * 2, t, {
+    M.Bodies.rectangle(vw / 2, vh + t / 2, vw + t * 2, t, {
       isStatic: true,
       restitution,
       friction: 0,
@@ -337,7 +325,7 @@ function createEdgeWalls(
       label: "wall-bottom",
       collisionFilter: wallFilter,
     }),
-    Bodies.rectangle(-t / 2, vh / 2, t, vh + t * 2, {
+    M.Bodies.rectangle(-t / 2, vh / 2, t, vh + t * 2, {
       isStatic: true,
       restitution,
       friction: 0,
@@ -345,7 +333,7 @@ function createEdgeWalls(
       label: "wall-left",
       collisionFilter: wallFilter,
     }),
-    Bodies.rectangle(vw + t / 2, vh / 2, t, vh + t * 2, {
+    M.Bodies.rectangle(vw + t / 2, vh / 2, t, vh + t * 2, {
       isStatic: true,
       restitution,
       friction: 0,
@@ -396,6 +384,7 @@ function clampMouseTargetToViewport(
 
 /** Mantém o centro do corpo dentro do ecrã (só no movimento livre; ver clamp no rato durante arrasto). */
 function clampBodyToViewport(
+  M: MatterNS,
   body: MatterBody,
   vw: number,
   vh: number,
@@ -407,7 +396,7 @@ function clampBodyToViewport(
   if (!b.ok) return;
 
   let { x, y } = body.position;
-  const v = Body.getVelocity(body);
+  const v = M.Body.getVelocity(body);
   let vx = v.x;
   let vy = v.y;
   let moved = false;
@@ -431,8 +420,8 @@ function clampBodyToViewport(
     moved = true;
   }
   if (moved) {
-    Body.setPosition(body, { x, y });
-    Body.setVelocity(body, { x: vx, y: vy });
+    M.Body.setPosition(body, { x, y });
+    M.Body.setVelocity(body, { x: vx, y: vy });
   }
 }
 
@@ -458,6 +447,7 @@ function randomPositionInBounds(
 /**
  * Forma com física Matter.js na viewport: loop contínuo, movimento lento,
  * choques suaves nas bordas (ponta a ponta). Portal em `document.body`.
+ * Matter.js é importado em runtime — chunk separado, menos JS inicial / “unused”.
  */
 export function FloatingShapeMatter(props: FloatingShapeMatterProps) {
   const {
@@ -541,168 +531,192 @@ export function FloatingShapeMatter(props: FloatingShapeMatterProps) {
     const visual = visualRef.current;
     if (!visual) return;
 
-    const engine = Engine.create({
-      gravity: { x: 0, y: 0, scale: 0 },
-      enableSleeping: false,
-    });
-    engine.world.gravity = engine.gravity;
+    let disposed = false;
+    let teardown: (() => void) | undefined;
 
-    const world = engine.world;
+    void import("matter-js").then((M) => {
+      if (disposed) return;
 
-    let vw = window.innerWidth;
-    let vh = window.innerHeight;
-    const {
-      width: bw,
-      height: bh,
-      restitution: rest,
-      frictionAir: fAir,
-      initialSpeed: speed,
-      wallThickness: t,
-    } = propsRef.current;
+      const mouseConstraintApi = M.MouseConstraint as unknown as typeof M.MouseConstraint & {
+        update(mc: MouseConstraintRuntime, bodies: MatterBody[]): void;
+        _triggerEvents(mc: MouseConstraintRuntime): void;
+      };
 
-    const g = propsRef.current.geometry;
+      const engine = M.Engine.create({
+        gravity: { x: 0, y: 0, scale: 0 },
+        enableSleeping: false,
+      });
+      engine.world.gravity = engine.gravity;
 
-    const start = randomPositionInBounds(vw, vh, g, bw, bh);
-    const angle = Math.random() * Math.PI * 2;
+      const world = engine.world;
 
-    const ball = createFloatingBody(g, start.x, start.y, bw, bh, {
-      restitution: rest,
-      friction: 0.02,
-      frictionAir: fAir,
-      density: 0.001,
-      label: "floating-shape",
-      collisionFilter: {
-        category: CATEGORY_DRAGGABLE,
-        mask: 0xffffffff,
-      },
-    });
+      let vw = window.innerWidth;
+      let vh = window.innerHeight;
+      const {
+        width: bw,
+        height: bh,
+        restitution: rest,
+        frictionAir: fAir,
+        initialSpeed: speed,
+        wallThickness: t,
+      } = propsRef.current;
 
-    Body.setVelocity(ball, {
-      x: Math.cos(angle) * speed,
-      y: Math.sin(angle) * speed,
-    });
+      const g = propsRef.current.geometry;
 
-    let walls = createEdgeWalls(vw, vh, t, rest);
-    Composite.add(world, [...walls, ball]);
+      const start = randomPositionInBounds(vw, vh, g, bw, bh);
+      const angle = Math.random() * Math.PI * 2;
 
-    const mouse = Mouse.create(document.body) as MatterMouseWithHandlers;
-    const dragConstraint = Constraint.create({
-      label: "Mouse Constraint",
-      pointA: mouse.position,
-      pointB: { x: 0, y: 0 },
-      length: 0.01,
-      stiffness: 0.12,
-      damping: 0.1,
-    }) as MatterConstraint & { angularStiffness: number };
-    // Igual ao MouseConstraint.create do matter-js: 1 = sem torque pelo arrasto
-    // (omissão seria 0 → rotação forte quando o clique não é no centro).
-    dragConstraint.angularStiffness = 1;
+      const ball = createFloatingBody(M, g, start.x, start.y, bw, bh, {
+        restitution: rest,
+        friction: 0.02,
+        frictionAir: fAir,
+        density: 0.001,
+        label: "floating-shape",
+        collisionFilter: {
+          category: CATEGORY_DRAGGABLE,
+          mask: 0xffffffff,
+        },
+      });
 
-    const mouseConstraint: MouseConstraintRuntime = {
-      type: "mouseConstraint",
-      mouse,
-      element: null,
-      body: null,
-      constraint: dragConstraint,
-      collisionFilter: {
-        category: 0x0001,
-        mask: CATEGORY_DRAGGABLE,
-      },
-    };
-    Composite.add(
-      world,
-      mouseConstraint as unknown as Parameters<typeof Composite.add>[1],
-    );
+      M.Body.setVelocity(ball, {
+        x: Math.cos(angle) * speed,
+        y: Math.sin(angle) * speed,
+      });
 
-    const fixedDelta = 1000 / 60;
+      let walls = createEdgeWalls(M, vw, vh, t, rest);
+      M.Composite.add(world, [...walls, ball]);
 
-    const syncVisual = () => {
-      const { width: wPx, height: hPx } = propsRef.current;
-      const hw = wPx / 2;
-      const hh = hPx / 2;
-      const pos = ball.position;
-      const rot = ball.angle;
-      visual.style.transform = `translate3d(${pos.x - hw}px, ${pos.y - hh}px, 0) rotate(${rot}rad)`;
-    };
+      const mouse = M.Mouse.create(document.body) as MatterMouseWithHandlers;
+      const dragConstraint = M.Constraint.create({
+        label: "Mouse Constraint",
+        pointA: mouse.position,
+        pointB: { x: 0, y: 0 },
+        length: 0.01,
+        stiffness: 0.12,
+        damping: 0.1,
+      }) as MatterConstraint & { angularStiffness: number };
+      dragConstraint.angularStiffness = 1;
 
-    const loop = () => {
-      const p = propsRef.current;
-      mouseConstraintApi.update(mouseConstraint, Composite.allBodies(world));
-      mouseConstraintApi._triggerEvents(mouseConstraint);
+      const mouseConstraint: MouseConstraintRuntime = {
+        type: "mouseConstraint",
+        mouse,
+        element: null,
+        body: null,
+        constraint: dragConstraint,
+        collisionFilter: {
+          category: 0x0001,
+          mask: CATEGORY_DRAGGABLE,
+        },
+      };
+      M.Composite.add(
+        world,
+        mouseConstraint as unknown as Parameters<typeof M.Composite.add>[1],
+      );
 
-      if (mouseConstraint.body === ball && mouse.button === 0) {
-        clampMouseTargetToViewport(
-          mouse,
-          vw,
-          vh,
-          p.geometry,
-          p.width,
-          p.height,
-        );
-      }
+      const fixedDelta = 1000 / 60;
 
-      Engine.update(engine, fixedDelta);
+      const syncVisual = () => {
+        const { width: wPx, height: hPx } = propsRef.current;
+        const hw = wPx / 2;
+        const hh = hPx / 2;
+        const pos = ball.position;
+        const rot = ball.angle;
+        visual.style.transform = `translate3d(${pos.x - hw}px, ${pos.y - hh}px, 0) rotate(${rot}rad)`;
+      };
 
-      const dragging = mouseConstraint.body !== null;
-      if (!dragging) {
-        clampBodyToViewport(ball, vw, vh, p.geometry, p.width, p.height);
-      }
-      if (!dragging) {
-        if (p.angularDamping < 1 && p.angularDamping >= 0) {
-          Body.setAngularVelocity(
-            ball,
-            ball.angularVelocity * p.angularDamping,
+      const loop = () => {
+        const p = propsRef.current;
+        mouseConstraintApi.update(mouseConstraint, M.Composite.allBodies(world));
+        mouseConstraintApi._triggerEvents(mouseConstraint);
+
+        if (mouseConstraint.body === ball && mouse.button === 0) {
+          clampMouseTargetToViewport(
+            mouse,
+            vw,
+            vh,
+            p.geometry,
+            p.width,
+            p.height,
           );
         }
-        applyDriftWhenFree(
-          ball,
-          p.minSpeed,
-          p.maxSpeed,
-          p.throwSpeedCap,
-        );
-      }
+
+        M.Engine.update(engine, fixedDelta);
+
+        const dragging = mouseConstraint.body !== null;
+        if (!dragging) {
+          clampBodyToViewport(
+            M,
+            ball,
+            vw,
+            vh,
+            p.geometry,
+            p.width,
+            p.height,
+          );
+        }
+        if (!dragging) {
+          if (p.angularDamping < 1 && p.angularDamping >= 0) {
+            M.Body.setAngularVelocity(
+              ball,
+              ball.angularVelocity * p.angularDamping,
+            );
+          }
+          applyDriftWhenFree(
+            M,
+            ball,
+            p.minSpeed,
+            p.maxSpeed,
+            p.throwSpeedCap,
+          );
+        }
+
+        syncVisual();
+        rafRef.current = window.requestAnimationFrame(loop);
+      };
 
       syncVisual();
       rafRef.current = window.requestAnimationFrame(loop);
-    };
 
-    syncVisual();
-    rafRef.current = window.requestAnimationFrame(loop);
+      const rebuildWalls = () => {
+        const p = propsRef.current;
+        vw = window.innerWidth;
+        vh = window.innerHeight;
+        M.Composite.remove(world, walls);
+        walls = createEdgeWalls(M, vw, vh, p.wallThickness, p.restitution);
+        M.Composite.add(world, walls);
 
-    const rebuildWalls = () => {
-      const p = propsRef.current;
-      vw = window.innerWidth;
-      vh = window.innerHeight;
-      Composite.remove(world, walls);
-      walls = createEdgeWalls(vw, vh, p.wallThickness, p.restitution);
-      Composite.add(world, walls);
+        clampBodyToViewport(M, ball, vw, vh, p.geometry, p.width, p.height);
+      };
 
-      clampBodyToViewport(ball, vw, vh, p.geometry, p.width, p.height);
-    };
+      const onResize = () => {
+        if (scheduleResize.current !== null) {
+          cancelAnimationFrame(scheduleResize.current);
+        }
+        scheduleResize.current = requestAnimationFrame(() => {
+          scheduleResize.current = null;
+          rebuildWalls();
+        });
+      };
 
-    const onResize = () => {
-      if (scheduleResize.current !== null) {
-        cancelAnimationFrame(scheduleResize.current);
-      }
-      scheduleResize.current = requestAnimationFrame(() => {
-        scheduleResize.current = null;
-        rebuildWalls();
-      });
-    };
+      window.addEventListener("resize", onResize, { passive: true });
 
-    window.addEventListener("resize", onResize, { passive: true });
+      teardown = () => {
+        window.removeEventListener("resize", onResize);
+        if (scheduleResize.current !== null) {
+          cancelAnimationFrame(scheduleResize.current);
+          scheduleResize.current = null;
+        }
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = 0;
+        detachMatterMouse(mouse);
+        M.World.clear(world, false);
+        M.Engine.clear(engine);
+      };
+    });
 
     return () => {
-      window.removeEventListener("resize", onResize);
-      if (scheduleResize.current !== null) {
-        cancelAnimationFrame(scheduleResize.current);
-        scheduleResize.current = null;
-      }
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = 0;
-      detachMatterMouse(mouse);
-      World.clear(world, false);
-      Engine.clear(engine);
+      disposed = true;
+      teardown?.();
     };
   }, [imageSrc, portalTarget, reveal, geometry]);
 
