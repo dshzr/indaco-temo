@@ -52,6 +52,15 @@ export default function RootLayout({
       lang="en"
       className={`${latinoGothic.variable} ${spaceGrotesk.variable} h-full antialiased`}
     >
+      <head>
+        <link
+          rel="preload"
+          href="/images/intro-poster.webp"
+          as="image"
+          type="image/webp"
+          fetchPriority="high"
+        />
+      </head>
       <body className="min-h-full flex flex-col">
         <ClickSound />
         {children}

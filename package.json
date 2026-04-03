@@ -26,6 +26,20 @@
   "engines": {
     "node": ">=24"
   },
+  "browserslist": {
+    "production": [
+      "chrome >= 111",
+      "edge >= 111",
+      "firefox >= 111",
+      "safari >= 16.4",
+      "ios_saf >= 16.4"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "safari >= 16.4"
+    ]
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",

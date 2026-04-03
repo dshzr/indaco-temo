@@ -1,6 +1,6 @@
 @import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
+/* tw-animate-css e shadcn/tailwind.css retirados — não há componentes shadcn no projeto;
+   volta a importar se gerares UI que use variantes data-* / animações do preset. */
 
 @custom-variant dark (&:is(.dark *));
 

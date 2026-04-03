@@ -11,21 +11,44 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
-const posterIn = path.join(root, "public", "images", "intro-frame.webp");
+const posterFrame = path.join(root, "public", "images", "intro-frame.webp");
 const posterOut = path.join(root, "public", "images", "intro-poster.webp");
+/** Largura máx. do poster (object-cover em full viewport); reduz bytes sem custo visível em mobile/LCP. */
+const POSTER_MAX_WIDTH = 1280;
+/** Qualidade WebP — equilíbrio LCP vs nitidez no ecrã inicial. */
+const POSTER_WEBP_QUALITY = 62;
 const videoIn = path.join(root, "public", "videos", "bg-intro.mp4");
 const videoOut = path.join(root, "public", "videos", "bg-intro-sm.mp4");
 
 async function optimizePoster() {
-  if (!fs.existsSync(posterIn)) {
-    console.warn("skip poster: missing", posterIn);
+  const posterIn = fs.existsSync(posterFrame)
+    ? posterFrame
+    : fs.existsSync(posterOut)
+      ? posterOut
+      : null;
+  if (!posterIn) {
+    console.warn("skip poster: missing intro-frame.webp and intro-poster.webp");
     return;
   }
-  await sharp(posterIn)
-    .rotate()
-    .webp({ quality: 78, effort: 6, smartSubsample: true })
-    .toFile(posterOut);
-  console.log("OK intro-poster.webp");
+
+  const meta = await sharp(posterIn).metadata();
+  let img = sharp(posterIn).rotate();
+  if (meta.width && meta.width > POSTER_MAX_WIDTH) {
+    img = img.resize({
+      width: POSTER_MAX_WIDTH,
+      withoutEnlargement: true,
+      fit: "inside",
+    });
+  }
+
+  await img.webp({
+    quality: POSTER_WEBP_QUALITY,
+    effort: 6,
+    smartSubsample: true,
+  }).toFile(posterOut);
+
+  const bytes = fs.statSync(posterOut).size;
+  console.log(`OK intro-poster.webp (${Math.round(bytes / 1024)} KiB)`);
 }
 
 function tryFfmpeg() {
