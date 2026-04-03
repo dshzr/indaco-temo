@@ -24,9 +24,15 @@ const socialLinks = [
 
 interface HeaderProps {
   activePage?: "home" | "portfolio" | "about";
+  /** Barra inferior clara (ícones e links escuros) — páginas com herói escuro / vídeo. */
+  footerSurface?: "default" | "light";
 }
 
-export function Header({ activePage = "home" }: HeaderProps) {
+export function Header({
+  activePage = "home",
+  footerSurface = "default",
+}: HeaderProps) {
+  const footerLight = footerSurface === "light";
   return (
     <>
       {/* Top Logo */}
@@ -44,8 +50,14 @@ export function Header({ activePage = "home" }: HeaderProps) {
       </header>
 
       {/* Bottom Navigation Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between px-3 md:px-8 py-3 md:py-5"
-        style={{ fontFamily: "var(--font-latino-gothic), Latino Gothic WdEx, sans-serif" }}>
+      <nav
+        className={`fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between border-t px-3 py-3 md:px-8 md:py-5 ${
+          footerLight
+            ? "border-neutral-200/80 bg-white/95 text-black backdrop-blur-md"
+            : "border-transparent bg-transparent"
+        }`}
+        style={{ fontFamily: "var(--font-latino-gothic), Latino Gothic WdEx, sans-serif" }}
+      >
         
         {/* Social Links - Left */}
         <div className="hidden md:flex items-center gap-4 flex-1">
@@ -56,7 +68,7 @@ export function Header({ activePage = "home" }: HeaderProps) {
               target="_blank"
               rel="noopener noreferrer"
               aria-label={social.label}
-              className="text-black hover:text-[var(--indaco)] transition-colors duration-300"
+              className="text-black transition-colors duration-300 hover:text-[var(--indaco)]"
             >
               <social.icon className="w-6 h-6" />
             </a>
@@ -75,10 +87,12 @@ export function Header({ activePage = "home" }: HeaderProps) {
               className={`
                 px-2 sm:px-3 md:px-8 py-1.5 md:py-2 text-[9px] sm:text-[11px] md:text-[14px] font-[800] uppercase tracking-wider transition-all duration-300 whitespace-nowrap
                 ${link.key === activePage
-                  ? "bg-[var(--lime)] text-black rounded-full"
-                  : activePage === "portfolio"
-                    ? "text-white hover:text-[var(--lime)]"
-                    : "text-black hover:text-[var(--indaco)]"
+                  ? "rounded-full bg-[var(--lime)] text-black"
+                  : footerLight
+                    ? "text-black hover:text-[var(--indaco)]"
+                    : activePage === "portfolio"
+                      ? "text-white hover:text-[var(--lime)]"
+                      : "text-black hover:text-[var(--indaco)]"
                 }
               `}
             >

@@ -25,35 +25,35 @@ const portfolioItems: PortfolioItem[] = [
   {
     title: "Pollini",
     slug: "pollini",
-    href: "https://www.instagram.com/indaco_agency/",
+    href: "/portfolio/pollini",
     hoverHeadline: "Pollini — heritage craft meets digital storytelling",
     hoverTags: DEFAULT_HOVER_TAGS,
   },
   {
     title: "Dorelan",
     slug: "dorelan",
-    href: "https://www.linkedin.com/company/indaco-srl/",
+    href: "/portfolio/dorelan",
     hoverHeadline: "Dorelan — sleep science, elevated on screen",
     hoverTags: DEFAULT_HOVER_TAGS,
   },
   {
     title: "Pagani",
     slug: "pagani",
-    href: "https://www.facebook.com/indacoagency",
+    href: "/portfolio/pagani",
     hoverHeadline: "Pagani — precision, speed, cinematic DNA",
     hoverTags: DEFAULT_HOVER_TAGS,
   },
   {
     title: "Red Bull",
     slug: "redbull",
-    href: "https://vimeo.com/indaco",
+    href: "/portfolio/redbull",
     hoverHeadline: "Red Bull — energy that breaks the frame",
     hoverTags: DEFAULT_HOVER_TAGS,
   },
   {
     title: "Adidas",
     slug: "adidas",
-    href: "https://vimeo.com/indaco",
+    href: "/portfolio/adidas",
     hoverHeadline: "Adidas — performance film & branded content",
     hoverTags: DEFAULT_HOVER_TAGS,
   },
@@ -727,7 +727,13 @@ export function PortfolioCanvas({ onReady, onTileHover }: PortfolioCanvasProps) 
       if (allowClick && pointerDownAt !== null && !state.isDragging) {
         const tile = pickTileAt(e.clientX, e.clientY);
         const href = tile?.userData.href;
-        if (href) window.open(href, "_blank", "noopener,noreferrer");
+        if (href) {
+          if (href.startsWith("/")) {
+            window.location.assign(href);
+          } else {
+            window.open(href, "_blank", "noopener,noreferrer");
+          }
+        }
       }
       pointerDownAt = null;
       state.isDragging = false;
