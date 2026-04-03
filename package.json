@@ -48,6 +48,7 @@
     "typecheck": "tsc --noEmit",
     "check": "npm run lint && npm run typecheck && npm run build",
     "optimize:portfolio": "node scripts/optimize-portfolio.mjs",
+    "optimize:portfolio:videos": "node scripts/optimize-portfolio-videos.mjs",
     "optimize:intro": "node scripts/optimize-intro-assets.mjs"
   },
   "dependencies": {

@@ -1,7 +1,8 @@
 /**
- * Gera versões .webp das capas do portfólio (largura máx. 1280px).
+ * Gera versões .webp das capas do portfólio (poster até vídeo carregar; largura máx. 1280px).
  * Executar: node scripts/optimize-portfolio.mjs
  *
+ * Clips do grid (WebM + MP4): npm run optimize:portfolio:videos
  * Vídeo/poster do intro: npm run optimize:intro
  */
 
