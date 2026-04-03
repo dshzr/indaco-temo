@@ -236,7 +236,11 @@ export default function Home() {
       />
     )),
     <MethodSection key="method" isActive={activeSection === 3} />,
-    <WorkSection key="work" isActive={activeSection === 4} />,
+    <WorkSection
+      key="work"
+      isActive={activeSection === 4}
+      prefetchPortfolioAssets={!showIntro && activeSection >= 3}
+    />,
   ];
 
   return (

@@ -82,11 +82,12 @@ export function IntroSection({ onEnter }: IntroSectionProps) {
           <video
             className="absolute inset-0 z-0 h-full w-full object-cover"
             src="/videos/bg-intro.mp4"
+            poster="/images/intro-frame.webp"
             autoPlay
             muted
             loop
             playsInline
-            preload="auto"
+            preload="metadata"
             disablePictureInPicture
           />
 
@@ -125,7 +126,7 @@ export function IntroSection({ onEnter }: IntroSectionProps) {
                 muted
                 loop
                 playsInline
-                preload="auto"
+                preload="metadata"
                 disablePictureInPicture
               />
             </div>

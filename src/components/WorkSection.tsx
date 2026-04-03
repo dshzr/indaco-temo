@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { FloatingShapeMatter } from "@/components/FloatingShapeMatter";
 
@@ -16,35 +16,35 @@ const portfolioItems: PortfolioItem[] = [
   {
     title: "The power of year-round digital advertising",
     tags: "DIGITAL + CAMPAIGN + CONTENT",
-    coverSrc: "/images/portfolio/pollini-cover.jpeg",
+    coverSrc: "/images/portfolio/pollini-cover.webp",
     logoSrc: "/images/portfolio/pollini-logo.png",
     href: "/portfolio/pollini",
   },
   {
     title: "Entra in modalità Dorelan",
     tags: "CREATIVE + PRODUCTION + VIDEO",
-    coverSrc: "/images/portfolio/dorelan-cover.jpg",
+    coverSrc: "/images/portfolio/dorelan-cover.webp",
     logoSrc: "/images/portfolio/dorelan-logo.png",
     href: "/portfolio/dorelan",
   },
   {
     title: "Sono i sognatori a muovere il mondo",
     tags: "CONCEPT + DIRECTION + PRODUCTION",
-    coverSrc: "/images/portfolio/pagani-cover.png",
+    coverSrc: "/images/portfolio/pagani-cover.webp",
     logoSrc: "/images/portfolio/pagani-logo.png",
     href: "/portfolio/pagani",
   },
   {
     title: "Redbull 64 Bars Live",
     tags: "LIVE + PRODUCTION + DIRECTION",
-    coverSrc: "/images/portfolio/redbull-cover.jpeg",
+    coverSrc: "/images/portfolio/redbull-cover.webp",
     logoSrc: "/images/portfolio/redbull-logo.png",
     href: "/portfolio/redbull",
   },
   {
     title: "Ritratto di famiglia",
     tags: "DIRECTION + FILMING + SET DESIGN",
-    coverSrc: "/images/portfolio/adidas-cover.jpeg",
+    coverSrc: "/images/portfolio/adidas-cover.webp",
     logoSrc: "/images/portfolio/adidas-logo.png",
     href: "/portfolio/adidas",
   },
@@ -52,12 +52,22 @@ const portfolioItems: PortfolioItem[] = [
 
 interface WorkSectionProps {
   isActive: boolean;
+  /** Pré-monta imagens já na secção Method (índice 3) para transição mais suave. */
+  prefetchPortfolioAssets?: boolean;
 }
 
-export function WorkSection({ isActive }: WorkSectionProps) {
+export function WorkSection({
+  isActive,
+  prefetchPortfolioAssets = false,
+}: WorkSectionProps) {
   const [titleVisible, setTitleVisible] = useState(false);
   const [cardsVisible, setCardsVisible] = useState(false);
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
+  /** Sticky sem setState em efeito: liberta imagens só quando a Method+ está “desbloqueada” ou Work ativa. */
+  const portfolioAssetsMountedRef = useRef(false);
+  if (isActive || prefetchPortfolioAssets) portfolioAssetsMountedRef.current = true;
+  const portfolioAssetsMounted = portfolioAssetsMountedRef.current;
+
   useEffect(() => {
     if (isActive) {
       setTimeout(() => setTitleVisible(true), 100);
@@ -100,7 +110,8 @@ export function WorkSection({ isActive }: WorkSectionProps) {
 
       {/* Cards Grid — tilted perspective carousel */}
       <div className="relative z-10 flex items-center justify-center gap-0 w-full max-w-[1400px] overflow-visible">
-        {portfolioItems.map((item, index) => {
+        {portfolioAssetsMounted &&
+          portfolioItems.map((item, index) => {
           const isHovered = hoveredCard === index;
           const baseRotation = rotations[index % rotations.length];
 
@@ -178,6 +189,7 @@ export function WorkSection({ isActive }: WorkSectionProps) {
         })}
 
         {/* CTA card */}
+        {portfolioAssetsMounted ? (
         <a
           href="/portfolio"
           className="relative flex-shrink-0 flex items-center justify-center overflow-hidden"
@@ -213,6 +225,7 @@ export function WorkSection({ isActive }: WorkSectionProps) {
             See for yourself &gt;
           </span>
         </a>
+        ) : null}
       </div>
 
       {isActive ? (

@@ -12,13 +12,14 @@ export function ClickSound() {
   useEffect(() => {
     const audio = new Audio(CLICK_SOUND_SRC);
     audio.volume = CLICK_VOLUME;
-    audio.preload = "auto";
+    audio.preload = "none";
     audioRef.current = audio;
 
     const onPointerDown = (e: PointerEvent) => {
       if (e.button !== 0) return;
       const a = audioRef.current;
       if (!a) return;
+      if (a.readyState < 2) void a.load();
       a.currentTime = 0;
       void a.play().catch(() => {});
     };
