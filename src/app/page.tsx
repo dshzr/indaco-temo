@@ -42,6 +42,8 @@ export default function Home() {
   const scrollbarRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastWheelTime = useRef(0);
+  /** Evita avanço por clique no centro logo após wheel ou swipe (duplo disparo no mobile/desktop). */
+  const suppressCenterAdvanceUntil = useRef(0);
 
   const handleIntroEnter = useCallback(() => {
     setShowIntro(false);
@@ -77,8 +79,13 @@ export default function Home() {
       if (now - lastWheelTime.current < 800) return;
       lastWheelTime.current = now;
 
-      if (e.deltaY > 0) goToSection(activeSection + 1);
-      else if (e.deltaY < 0) goToSection(activeSection - 1);
+      if (e.deltaY > 0) {
+        suppressCenterAdvanceUntil.current = Date.now() + 400;
+        goToSection(activeSection + 1);
+      } else if (e.deltaY < 0) {
+        suppressCenterAdvanceUntil.current = Date.now() + 400;
+        goToSection(activeSection - 1);
+      }
     };
 
     const el = containerRef.current;
@@ -116,6 +123,7 @@ export default function Home() {
     const handleTouchEnd = (e: TouchEvent) => {
       const diff = touchStartY - e.changedTouches[0].clientY;
       if (Math.abs(diff) > 50) {
+        suppressCenterAdvanceUntil.current = Date.now() + 400;
         if (diff > 0) goToSection(activeSection + 1);
         else goToSection(activeSection - 1);
       }
@@ -159,6 +167,50 @@ export default function Home() {
       window.removeEventListener("mouseup", handleMouseUp);
     };
   }, [isDragging, handleScrollbarDrag]);
+
+  // Avançar secção só com clique/toque na zona central (evita links, barra e conflito com scroll).
+  useEffect(() => {
+    if (showIntro) return;
+
+    const interactiveSelector =
+      "a[href], button, [role='button'], input, textarea, select, label, [data-no-section-advance]";
+
+    const isInteractiveTarget = (target: EventTarget | null) => {
+      if (!(target instanceof Element)) return false;
+      return Boolean(target.closest(interactiveSelector));
+    };
+
+    const inCenterZone = (clientX: number, clientY: number) => {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const xMin = vw * 0.22;
+      const xMax = vw * 0.78;
+      const yMin = vh * 0.18;
+      const yMax = vh * 0.82;
+      const scrollbarReservePx = Math.min(96, vw * 0.24);
+      if (clientX >= vw - scrollbarReservePx) return false;
+      return (
+        clientX >= xMin &&
+        clientX <= xMax &&
+        clientY >= yMin &&
+        clientY <= yMax
+      );
+    };
+
+    const onClick = (e: Event) => {
+      if (!(e instanceof MouseEvent) || e.button !== 0) return;
+      if (Date.now() < suppressCenterAdvanceUntil.current) return;
+      if (isInteractiveTarget(e.target)) return;
+      const el = e.target;
+      if (!(el instanceof Element)) return;
+      if (el.closest("[data-section-scrollbar]")) return;
+      if (!inCenterZone(e.clientX, e.clientY)) return;
+      goToSection(activeSection + 1);
+    };
+
+    document.addEventListener("click", onClick);
+    return () => document.removeEventListener("click", onClick);
+  }, [showIntro, activeSection, goToSection]);
 
   const scrollProgress = activeSection / (TOTAL_SECTIONS - 1);
 
@@ -223,6 +275,7 @@ export default function Home() {
 
         {/* Custom Scrollbar */}
         <div
+          data-section-scrollbar
           className="fixed right-6 top-1/2 -translate-y-1/2 z-[60]"
           style={{
             opacity: showIntro ? 0 : 1,

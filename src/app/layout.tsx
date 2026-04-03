@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Space_Grotesk } from "next/font/google";
+import { ClickSound } from "@/components/ClickSound";
 import "./globals.css";
 
 const latinoGothic = localFont({
@@ -51,7 +52,10 @@ export default function RootLayout({
       lang="en"
       className={`${latinoGothic.variable} ${spaceGrotesk.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <ClickSound />
+        {children}
+      </body>
     </html>
   );
 }
